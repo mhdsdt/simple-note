@@ -83,22 +83,6 @@ private val baseUrl = "https://simple-note.liara.run/"
 
 You can change this URL to point to your own backend if needed.
 
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
-
-1.  Fork the repository.
-2.  Create a new branch for your feature or bug fix.
-3.  Make your changes.
-4.  Commit your changes with descriptive commit messages.
-5.  Push your changes to your fork.
-6.  Submit a pull request to the main branch of the original repository.
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-*   Thanks to the Android Jetpack team for providing excellent libraries and tools.
-*   Thanks to the open-source community for their contributions.
