@@ -46,10 +46,10 @@ graph LR
     A[UI Layer - Jetpack Compose] --> B(ViewModel Layer)
     B --> C(Repository Layer)
     C --> D{Data Layer - API Service / DataStore}
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#ccf,stroke:#333,stroke-width:2px
-    style C fill:#ccf,stroke:#333,stroke-width:2px
-    style D fill:#fcc,stroke:#333,stroke-width:2px
+    style A fill:#f9f,stroke:#333,stroke-width:2px,color:#000
+    style B fill:#ccf,stroke:#333,stroke-width:2px,color:#000
+    style C fill:#ccf,stroke:#333,stroke-width:2px,color:#000
+    style D fill:#fcc,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ## Getting Started
