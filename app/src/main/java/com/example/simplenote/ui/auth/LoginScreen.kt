@@ -1,5 +1,6 @@
 package com.example.simplenote.ui.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,6 +44,7 @@ fun LoginScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -53,10 +56,16 @@ fun LoginScreen(
         isLoading = loginState is Resource.Loading
 
         if (loginState is Resource.Success) {
+            Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show()
             navController.navigate(Screen.Home.route) {
                 popUpTo(Screen.Login.route) { inclusive = true }
             }
         } else if (loginState is Resource.Error) {
+            Toast.makeText(
+                context,
+                loginState.message ?: "Login failed",
+                Toast.LENGTH_SHORT
+            ).show()
             errorMessage = loginState.message
         }
     }

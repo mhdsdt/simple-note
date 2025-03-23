@@ -1,5 +1,6 @@
 package com.example.simplenote.ui.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -48,6 +50,7 @@ fun RegisterScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
@@ -59,15 +62,24 @@ fun RegisterScreen(
 
     val registerState by viewModel.registerState.collectAsState()
 
-    // Initialize isLoading based on the current state
     LaunchedEffect(registerState) {
         isLoading = registerState is Resource.Loading
 
         if (registerState is Resource.Success) {
+            Toast.makeText(
+                context,
+                "Registration Successful",
+                Toast.LENGTH_SHORT
+            ).show()
             navController.navigate(Screen.Login.route) {
                 popUpTo(Screen.Register.route) { inclusive = true }
             }
         } else if (registerState is Resource.Error) {
+            Toast.makeText(
+                context,
+                registerState.message ?: "Registration failed",
+                Toast.LENGTH_SHORT
+            ).show()
             errorMessage = registerState.message
         }
     }
@@ -186,8 +198,8 @@ fun RegisterScreen(
         PrimaryButton(
             text = "Register",
             onClick = {
-                if (firstName.isBlank() || lastName.isBlank() || username.isBlank() ||
-                    email.isBlank() || password.isBlank() || confirmPassword.isBlank()
+                if (firstName.isBlank() || lastName.isBlank() || username.isBlank()
+                    || email.isBlank() || password.isBlank() || confirmPassword.isBlank()
                 ) {
                     errorMessage = "Please fill all fields"
                     return@PrimaryButton

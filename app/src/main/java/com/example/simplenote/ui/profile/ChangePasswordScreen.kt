@@ -1,5 +1,6 @@
 package com.example.simplenote.ui.profile
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +46,7 @@ fun ChangePasswordScreen(
     navController: NavController,
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -52,9 +55,19 @@ fun ChangePasswordScreen(
 
     LaunchedEffect(changePasswordState) {
         if (changePasswordState is Resource.Success) {
+            Toast.makeText(
+                context,
+                "Password changed successfully",
+                Toast.LENGTH_SHORT
+            ).show()
             navController.popBackStack()
         }
         if (changePasswordState is Resource.Error) {
+            Toast.makeText(
+                context,
+                changePasswordState.message ?: "Failed to change password",
+                Toast.LENGTH_SHORT
+            ).show()
             errorMessage = (changePasswordState as Resource.Error).message
         }
     }

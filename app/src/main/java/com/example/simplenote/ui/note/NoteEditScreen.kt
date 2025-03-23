@@ -1,5 +1,6 @@
 package com.example.simplenote.ui.note
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,6 +41,7 @@ fun NoteEditScreen(
     noteId: Int?,
     viewModel: NoteViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -73,6 +76,11 @@ fun NoteEditScreen(
             }
             is Resource.Error -> {
                 isLoading = false
+                Toast.makeText(
+                    context,
+                    noteState.message ?: "Failed to load note",
+                    Toast.LENGTH_SHORT
+                ).show()
                 errorMessage = noteState.message
             }
         }
@@ -88,10 +96,20 @@ fun NoteEditScreen(
             }
             is Resource.Success -> {
                 isLoading = false
+                Toast.makeText(
+                    context,
+                    "Note created successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
                 navController.popBackStack()
             }
             is Resource.Error -> {
                 isLoading = false
+                Toast.makeText(
+                    context,
+                    createNoteState.message ?: "Failed to create note",
+                    Toast.LENGTH_SHORT
+                ).show()
                 errorMessage = createNoteState.message
             }
         }
@@ -107,10 +125,20 @@ fun NoteEditScreen(
             }
             is Resource.Success -> {
                 isLoading = false
+                Toast.makeText(
+                    context,
+                    "Note updated successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
                 navController.popBackStack()
             }
             is Resource.Error -> {
                 isLoading = false
+                Toast.makeText(
+                    context,
+                    updateNoteState.message ?: "Failed to update note",
+                    Toast.LENGTH_SHORT
+                ).show()
                 errorMessage = updateNoteState.message
             }
         }
@@ -126,10 +154,20 @@ fun NoteEditScreen(
             }
             is Resource.Success -> {
                 isLoading = false
+                Toast.makeText(
+                    context,
+                    "Note deleted successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
                 navController.popBackStack()
             }
             is Resource.Error -> {
                 isLoading = false
+                Toast.makeText(
+                    context,
+                    deleteNoteState.message ?: "Failed to delete note",
+                    Toast.LENGTH_SHORT
+                ).show()
                 errorMessage = deleteNoteState.message
             }
         }
