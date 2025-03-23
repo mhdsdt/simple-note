@@ -27,11 +27,21 @@ class AuthViewModel @Inject constructor(
     private val _userInfoState = MutableStateFlow<Resource<UserInfoResponse>>(Resource.Idle())
     val userInfoState: StateFlow<Resource<UserInfoResponse>> = _userInfoState
 
-    fun register(username: String, password: String, email: String, firstName: String, lastName: String) {
+    private val _changePasswordState = MutableStateFlow<Resource<Boolean>>(Resource.Idle())
+    val changePasswordState: StateFlow<Resource<Boolean>> = _changePasswordState
+
+    fun register(
+        username: String,
+        password: String,
+        email: String,
+        firstName: String,
+        lastName: String
+    ) {
         viewModelScope.launch {
-            authRepository.register(username, password, email, firstName, lastName).onEach { result ->
-                _registerState.value = result
-            }.launchIn(viewModelScope)
+            authRepository.register(username, password, email, firstName, lastName)
+                .onEach { result ->
+                    _registerState.value = result
+                }.launchIn(viewModelScope)
         }
     }
 
@@ -63,19 +73,24 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun isLoggedIn(): Boolean {
-        return authRepository.isLoggedIn()
-    }
-
-    fun resetRegisterState() {
+    private fun resetRegisterState() {
         _registerState.value = Resource.Idle()
     }
 
-    fun resetLoginState() {
+    private fun resetLoginState() {
         _loginState.value = Resource.Idle()
     }
 
-    fun resetUserInfoState() {
+    private fun resetUserInfoState() {
         _userInfoState.value = Resource.Idle()
+    }
+
+    fun changePassword(oldPassword: String, newPassword: String) {
+        viewModelScope.launch {
+            authRepository.changePassword(oldPassword, newPassword)
+                .onEach { result ->
+                    _changePasswordState.value = result
+                }.launchIn(viewModelScope)
+        }
     }
 }

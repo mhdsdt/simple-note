@@ -1,6 +1,7 @@
 package com.example.simplenote.data.repository
 
 import com.example.simplenote.api.ApiService
+import com.example.simplenote.api.models.ChangePasswordRequest
 import com.example.simplenote.api.models.LoginRequest
 import com.example.simplenote.api.models.RefreshTokenRequest
 import com.example.simplenote.api.models.RegisterRequest
@@ -38,7 +39,9 @@ class AuthRepository @Inject constructor(
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
         } catch (e: IOException) {
-            emit(Resource.Error("Couldn't reach server. Check your internet connection."))
+            emit(
+                Resource.Error("Couldn't reach server. Check your internet connection.")
+            )
         }
     }
 
@@ -59,7 +62,9 @@ class AuthRepository @Inject constructor(
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
         } catch (e: IOException) {
-            emit(Resource.Error("Couldn't reach server. Check your internet connection."))
+            emit(
+                Resource.Error("Couldn't reach server. Check your internet connection.")
+            )
         }
     }
 
@@ -86,7 +91,9 @@ class AuthRepository @Inject constructor(
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
         } catch (e: IOException) {
-            emit(Resource.Error("Couldn't reach server. Check your internet connection."))
+            emit(
+                Resource.Error("Couldn't reach server. Check your internet connection.")
+            )
         }
     }
 
@@ -99,7 +106,7 @@ class AuthRepository @Inject constructor(
                     emit(Resource.Success(userInfo))
                 } ?: emit(Resource.Error("User info response is null"))
             } else {
-                if(response.code() == 401) {
+                if (response.code() == 401) {
                     tokenManager.clearTokens()
                     emit(Resource.Error("Session expired. Please login again."))
                 } else {
@@ -118,4 +125,24 @@ class AuthRepository @Inject constructor(
     fun isLoggedIn(): Boolean {
         return tokenManager.getAccessToken() != null
     }
+
+    fun changePassword(oldPassword: String, newPassword: String): Flow<Resource<Boolean>> =
+        flow {
+            emit(Resource.Loading())
+            try {
+                val request = ChangePasswordRequest(oldPassword, newPassword)
+                val response = apiService.changePassword(request)
+                if (response.isSuccessful) {
+                    emit(Resource.Success(true))
+                } else {
+                    emit(Resource.Error("Change password failed: ${response.message()}"))
+                }
+            } catch (e: HttpException) {
+                emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
+            } catch (e: IOException) {
+                emit(
+                    Resource.Error("Couldn't reach server. Check your internet connection.")
+                )
+            }
+        }
 }

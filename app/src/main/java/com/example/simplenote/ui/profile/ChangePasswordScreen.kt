@@ -16,6 +16,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.simplenote.ui.components.PasswordTextField
 import com.example.simplenote.ui.components.PrimaryButton
@@ -33,26 +36,35 @@ import com.example.simplenote.ui.components.TextLink
 import com.example.simplenote.ui.theme.TextBase
 import compose.icons.TablerIcons
 import compose.icons.tablericons.ChevronLeft
+import com.example.simplenote.util.Resource
+import com.example.simplenote.viewmodel.AuthViewModel
 
 @Composable
 fun ChangePasswordScreen(
-    navController: NavController
+    navController: NavController,
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    val changePasswordState by authViewModel.changePasswordState.collectAsState()
+
+    LaunchedEffect(changePasswordState) {
+        if (changePasswordState is Resource.Success) {
+            navController.popBackStack()
+        }
+        if (changePasswordState is Resource.Error) {
+            errorMessage = (changePasswordState as Resource.Error).message
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            // Top app bar with back button and centered title
+        Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -60,8 +72,10 @@ fun ChangePasswordScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Back button aligned to the left
-                Box(modifier = Modifier.weight(0.8f), contentAlignment = Alignment.CenterStart) {
+                Box(
+                    modifier = Modifier.weight(0.8f),
+                    contentAlignment = Alignment.CenterStart
+                ) {
                     TextLink(
                         text = "Back",
                         onClick = { navController.popBackStack() },
@@ -73,10 +87,9 @@ fun ChangePasswordScreen(
                                 modifier = Modifier.size(18.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
-                        },
+                        }
                     )
                 }
-
                 Text(
                     text = "Change Password",
                     style = TextBase.copy(fontWeight = FontWeight.Medium),
@@ -85,32 +98,25 @@ fun ChangePasswordScreen(
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
-
-                // Empty box with same weight to ensure centering
                 Box(modifier = Modifier.weight(0.8f))
             }
-
             Divider(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp),
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
             )
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Instruction text with primary color
                 Text(
                     text = "Please input your current password first",
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-
-                // Current Password
                 PasswordTextField(
                     value = currentPassword,
                     onValueChange = { currentPassword = it },
@@ -118,24 +124,20 @@ fun ChangePasswordScreen(
                     placeholder = "Enter your current password",
                     imeAction = ImeAction.Next
                 )
-
                 Spacer(modifier = Modifier.height(24.dp))
-
                 Divider(
-                    modifier = Modifier.fillMaxWidth().height(1.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp),
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
                 )
-
                 Spacer(modifier = Modifier.height(24.dp))
-
                 Text(
                     text = "Now, create your new password",
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-
-                // New Password
                 PasswordTextField(
                     value = newPassword,
                     onValueChange = { newPassword = it },
@@ -149,10 +151,7 @@ fun ChangePasswordScreen(
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Retype New Password
                 PasswordTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
@@ -160,7 +159,6 @@ fun ChangePasswordScreen(
                     placeholder = "Confirm your new password",
                     imeAction = ImeAction.Done
                 )
-
                 if (errorMessage != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -169,26 +167,23 @@ fun ChangePasswordScreen(
                         modifier = Modifier.padding(start = 4.dp)
                     )
                 }
-
-                // Push the button to the bottom
                 Spacer(modifier = Modifier.weight(1f))
-
-                // Submit button with arrow icon
                 PrimaryButton(
                     text = "Submit New Password",
+                    isLoading = changePasswordState is Resource.Loading,
                     onClick = {
-                        if (currentPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank()) {
+                        if (currentPassword.isBlank() ||
+                            newPassword.isBlank() ||
+                            confirmPassword.isBlank()
+                        ) {
                             errorMessage = "Please fill all fields"
                             return@PrimaryButton
                         }
-
                         if (newPassword != confirmPassword) {
                             errorMessage = "New passwords do not match"
                             return@PrimaryButton
                         }
-
-                        // TODO: Implement change password endpoint in backend
-                        navController.popBackStack()
+                        authViewModel.changePassword(currentPassword, newPassword)
                     }
                 )
             }

@@ -36,3 +36,12 @@ data class UserInfoResponse(
     val first_name: String,
     val last_name: String
 )
+
+data class ChangePasswordRequest(
+    val old_password: String,
+    val new_password: String
+)
+
+data class ChangePasswordResponse(
+    val detail: String
+)

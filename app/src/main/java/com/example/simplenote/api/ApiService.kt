@@ -18,6 +18,9 @@ interface ApiService {
     @GET("api/auth/userinfo/")
     suspend fun getUserInfo(): Response<UserInfoResponse>
 
+    @POST("api/auth/change-password/")
+    suspend fun changePassword(@Body request: ChangePasswordRequest): Response<ChangePasswordResponse>
+
     @GET("api/notes/")
     suspend fun getNotes(
         @Query("page") page: Int? = null,
