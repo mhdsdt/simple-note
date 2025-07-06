@@ -25,7 +25,11 @@ class NoteRepository @Inject constructor(
                     emit(Resource.Success(notesResponse))
                 } ?: emit(Resource.Error("Notes response is null"))
             } else {
-                emit(Resource.Error("Failed to get notes: ${response.message()}"))
+                val raw = response.errorBody()?.string()
+                val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                    ?: "Failed to get notes"      // fallback
+
+                emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
@@ -45,7 +49,11 @@ class NoteRepository @Inject constructor(
                     emit(Resource.Success(noteResponse))
                 } ?: emit(Resource.Error("Create note response is null"))
             } else {
-                emit(Resource.Error("Failed to create note: ${response.message()}"))
+                val raw = response.errorBody()?.string()
+                val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                    ?: "Failed to create note"      // fallback
+
+                emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
@@ -64,7 +72,11 @@ class NoteRepository @Inject constructor(
                     emit(Resource.Success(noteResponse))
                 } ?: emit(Resource.Error("Note response is null"))
             } else {
-                emit(Resource.Error("Failed to get note: ${response.message()}"))
+                val raw = response.errorBody()?.string()
+                val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                    ?: "Failed to get note"      // fallback
+
+                emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
@@ -84,7 +96,11 @@ class NoteRepository @Inject constructor(
                     emit(Resource.Success(noteResponse))
                 } ?: emit(Resource.Error("Update note response is null"))
             } else {
-                emit(Resource.Error("Failed to update note: ${response.message()}"))
+                val raw = response.errorBody()?.string()
+                val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                    ?: "Failed to update note"      // fallback
+
+                emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
@@ -101,7 +117,11 @@ class NoteRepository @Inject constructor(
             if (response.isSuccessful) {
                 emit(Resource.Success(true))
             } else {
-                emit(Resource.Error("Failed to delete note: ${response.message()}"))
+                val raw = response.errorBody()?.string()
+                val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                    ?: "Failed to delete note"      // fallback
+
+                emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
@@ -129,7 +149,11 @@ class NoteRepository @Inject constructor(
                     emit(Resource.Success(notesResponse))
                 } ?: emit(Resource.Error("Search notes response is null"))
             } else {
-                emit(Resource.Error("Failed to search notes: ${response.message()}"))
+                val raw = response.errorBody()?.string()
+                val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                    ?: "Failed to search notes"      // fallback
+
+                emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))

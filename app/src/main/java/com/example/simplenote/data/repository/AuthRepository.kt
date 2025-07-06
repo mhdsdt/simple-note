@@ -34,7 +34,11 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful) {
                 emit(Resource.Success(true))
             } else {
-                emit(Resource.Error("Registration failed: ${response.message()}"))
+                val raw = response.errorBody()?.string()
+                val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                    ?: "Registration failed"      // fallback
+
+                emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
@@ -57,7 +61,11 @@ class AuthRepository @Inject constructor(
                     emit(Resource.Success(true))
                 } ?: emit(Resource.Error("Login response is null"))
             } else {
-                emit(Resource.Error("Login failed: ${response.message()}"))
+                val raw = response.errorBody()?.string()
+                val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                    ?: "Login failed"      // fallback
+
+                emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
@@ -86,7 +94,10 @@ class AuthRepository @Inject constructor(
                     emit(Resource.Success(true))
                 }
             } else {
-                emit(Resource.Error("Token refresh failed: ${response.message()}"))
+                val raw = response.errorBody()?.string()
+                val errorMessage = "Token refresh failed" + (raw?.let { ": ${parseDrfErrorBody(it)}" }
+                    ?: "")      // fallback
+                emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
             emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
@@ -110,7 +121,11 @@ class AuthRepository @Inject constructor(
                     tokenManager.clearTokens()
                     emit(Resource.Error("Session expired. Please login again."))
                 } else {
-                    emit(Resource.Error("Failed to get user info: ${response.message()}"))
+                    val raw = response.errorBody()?.string()
+                    val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                        ?: "Failed to get user info"      // fallback
+
+                    emit(Resource.Error(message = errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -135,7 +150,11 @@ class AuthRepository @Inject constructor(
                 if (response.isSuccessful) {
                     emit(Resource.Success(true))
                 } else {
-                    emit(Resource.Error("Change password failed: ${response.message()}"))
+                    val raw = response.errorBody()?.string()
+                    val errorMessage = raw?.let { parseDrfErrorBody(it) }
+                        ?: "Change password failed"      // fallback
+
+                    emit(Resource.Error(message = errorMessage))
                 }
             } catch (e: HttpException) {
                 emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
