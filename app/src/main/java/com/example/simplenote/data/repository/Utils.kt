@@ -2,7 +2,11 @@ package com.example.simplenote.data.repository
 
 import org.json.JSONObject
 
-fun parseDrfErrorBody(errorBody: String): String {
+fun parseDrfErrorBody(baseMessage: String, errorBody: String?): String {
+    if (errorBody == null) {
+        return "$baseMessage No error body"
+    }
+
     val json = JSONObject(errorBody)
 
     // If DRF returned a top-level "detail", use it:
@@ -14,18 +18,21 @@ fun parseDrfErrorBody(errorBody: String): String {
     if (json.has("errors")) {
         val arr = json.getJSONArray("errors")
         val messages = mutableListOf<String>()
+        messages += baseMessage
         for (i in 0 until arr.length()) {
             val errObj = arr.getJSONObject(i)
             // Here we grab errObj["detail"] (or .optString to be safe)
-            val msg = errObj.optString("detail", null)
-            if (msg != null) {
-                messages += msg
-            }
+            val msg = errObj.optString("detail", null.toString())
+            messages += msg
         }
-        // You can join them, or just take the first one
-        return messages.firstOrNull()
-            ?: "Unknown error (no details provided)"
+        // Join the messages with a prefix of "\n-" for each message
+        val errorMessage = if (messages.isNotEmpty()) {
+            messages.joinToString("\n- ")
+        } else {
+            "$baseMessage Unknown error (no details provided)"
+        }
+        return errorMessage
     }
 
-    return "Unknown error"
+    return "$baseMessage Unknown error"
 }

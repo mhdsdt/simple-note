@@ -87,8 +87,8 @@ fun RegisterScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
             .verticalScroll(rememberScrollState())
+            .padding(24.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

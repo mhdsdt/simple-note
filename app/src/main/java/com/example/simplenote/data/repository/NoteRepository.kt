@@ -26,9 +26,7 @@ class NoteRepository @Inject constructor(
                 } ?: emit(Resource.Error("Notes response is null"))
             } else {
                 val raw = response.errorBody()?.string()
-                val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                    ?: "Failed to get notes"      // fallback
-
+                val errorMessage = parseDrfErrorBody("Failed to get notes:", raw)
                 emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
@@ -50,9 +48,7 @@ class NoteRepository @Inject constructor(
                 } ?: emit(Resource.Error("Create note response is null"))
             } else {
                 val raw = response.errorBody()?.string()
-                val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                    ?: "Failed to create note"      // fallback
-
+                val errorMessage = parseDrfErrorBody("Failed to create note:", raw)
                 emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
@@ -73,9 +69,7 @@ class NoteRepository @Inject constructor(
                 } ?: emit(Resource.Error("Note response is null"))
             } else {
                 val raw = response.errorBody()?.string()
-                val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                    ?: "Failed to get note"      // fallback
-
+                val errorMessage = parseDrfErrorBody("Failed to get note:", raw)
                 emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
@@ -97,9 +91,7 @@ class NoteRepository @Inject constructor(
                 } ?: emit(Resource.Error("Update note response is null"))
             } else {
                 val raw = response.errorBody()?.string()
-                val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                    ?: "Failed to update note"      // fallback
-
+                val errorMessage = parseDrfErrorBody("Failed to update note:", raw)
                 emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
@@ -118,9 +110,7 @@ class NoteRepository @Inject constructor(
                 emit(Resource.Success(true))
             } else {
                 val raw = response.errorBody()?.string()
-                val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                    ?: "Failed to delete note"      // fallback
-
+                val errorMessage = parseDrfErrorBody("Failed to delete note:", raw)
                 emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
@@ -150,9 +140,7 @@ class NoteRepository @Inject constructor(
                 } ?: emit(Resource.Error("Search notes response is null"))
             } else {
                 val raw = response.errorBody()?.string()
-                val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                    ?: "Failed to search notes"      // fallback
-
+                val errorMessage = parseDrfErrorBody("Failed to search notes:", raw)
                 emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {

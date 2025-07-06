@@ -35,9 +35,7 @@ class AuthRepository @Inject constructor(
                 emit(Resource.Success(true))
             } else {
                 val raw = response.errorBody()?.string()
-                val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                    ?: "Registration failed"      // fallback
-
+                val errorMessage = parseDrfErrorBody("Registration failed:", raw)
                 emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
@@ -62,9 +60,7 @@ class AuthRepository @Inject constructor(
                 } ?: emit(Resource.Error("Login response is null"))
             } else {
                 val raw = response.errorBody()?.string()
-                val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                    ?: "Login failed"      // fallback
-
+                val errorMessage = parseDrfErrorBody("Login failed:", raw)
                 emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
@@ -95,8 +91,7 @@ class AuthRepository @Inject constructor(
                 }
             } else {
                 val raw = response.errorBody()?.string()
-                val errorMessage = "Token refresh failed" + (raw?.let { ": ${parseDrfErrorBody(it)}" }
-                    ?: "")      // fallback
+                val errorMessage = parseDrfErrorBody("Token refresh failed:", raw)
                 emit(Resource.Error(message = errorMessage))
             }
         } catch (e: HttpException) {
@@ -122,9 +117,7 @@ class AuthRepository @Inject constructor(
                     emit(Resource.Error("Session expired. Please login again."))
                 } else {
                     val raw = response.errorBody()?.string()
-                    val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                        ?: "Failed to get user info"      // fallback
-
+                    val errorMessage = parseDrfErrorBody("Failed to get user info:", raw)
                     emit(Resource.Error(message = errorMessage))
                 }
             }
@@ -151,9 +144,7 @@ class AuthRepository @Inject constructor(
                     emit(Resource.Success(true))
                 } else {
                     val raw = response.errorBody()?.string()
-                    val errorMessage = raw?.let { parseDrfErrorBody(it) }
-                        ?: "Change password failed"      // fallback
-
+                    val errorMessage = parseDrfErrorBody("Change password failed:", raw)
                     emit(Resource.Error(message = errorMessage))
                 }
             } catch (e: HttpException) {
