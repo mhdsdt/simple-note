@@ -1,18 +1,20 @@
 package com.example.simplenote.api.models
 
+import com.google.gson.annotations.SerializedName
+
 data class NoteRequest(
     val title: String,
     val description: String
 )
 
 data class NoteResponse(
-    val id: Int,
-    val title: String,
-    val description: String,
-    val created_at: String,
-    val updated_at: String,
-    val creator_name: String,
-    val creator_username: String
+    @SerializedName("id")               val id: Int,
+    @SerializedName("title")            val title: String,
+    @SerializedName("description")      val description: String,
+    @SerializedName("created_at")       val createdAt: String,
+    @SerializedName("updated_at")       val updatedAt: String,
+    @SerializedName("creator_name")     val creatorName: String,
+    @SerializedName("creator_username") val creatorUsername: String
 )
 
 data class NotesListResponse(
