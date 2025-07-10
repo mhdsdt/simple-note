@@ -19,22 +19,22 @@ class NoteViewModel @Inject constructor(
     private val noteRepository: NoteRepository
 ) : ViewModel() {
 
-    private val _notesState = MutableStateFlow<Resource<NotesListResponse>>(Resource.Loading())
+    private val _notesState = MutableStateFlow<Resource<NotesListResponse>>(Resource.Idle())
     val notesState: StateFlow<Resource<NotesListResponse>> = _notesState
 
-    private val _noteState = MutableStateFlow<Resource<NoteResponse>>(Resource.Loading())
+    private val _noteState = MutableStateFlow<Resource<NoteResponse>>(Resource.Idle())
     val noteState: StateFlow<Resource<NoteResponse>> = _noteState
 
-    private val _createNoteState = MutableStateFlow<Resource<NoteResponse>>(Resource.Loading())
+    private val _createNoteState = MutableStateFlow<Resource<NoteResponse>>(Resource.Idle())
     val createNoteState: StateFlow<Resource<NoteResponse>> = _createNoteState
 
-    private val _updateNoteState = MutableStateFlow<Resource<NoteResponse>>(Resource.Loading())
+    private val _updateNoteState = MutableStateFlow<Resource<NoteResponse>>(Resource.Idle())
     val updateNoteState: StateFlow<Resource<NoteResponse>> = _updateNoteState
 
-    private val _deleteNoteState = MutableStateFlow<Resource<Boolean>>(Resource.Loading())
+    private val _deleteNoteState = MutableStateFlow<Resource<Boolean>>(Resource.Idle())
     val deleteNoteState: StateFlow<Resource<Boolean>> = _deleteNoteState
 
-    private val _searchState = MutableStateFlow<Resource<NotesListResponse>>(Resource.Loading())
+    private val _searchState = MutableStateFlow<Resource<NotesListResponse>>(Resource.Idle())
     val searchState: StateFlow<Resource<NotesListResponse>> = _searchState
 
     fun getNotes(page: Int? = null, pageSize: Int? = null) {
@@ -95,18 +95,18 @@ class NoteViewModel @Inject constructor(
     }
 
     fun resetNoteState() {
-        _noteState.value = Resource.Loading()
+        _noteState.value = Resource.Idle()
     }
 
     fun resetCreateNoteState() {
-        _createNoteState.value = Resource.Loading()
+        _createNoteState.value = Resource.Idle()
     }
 
     fun resetUpdateNoteState() {
-        _updateNoteState.value = Resource.Loading()
+        _updateNoteState.value = Resource.Idle()
     }
 
     fun resetDeleteNoteState() {
-        _deleteNoteState.value = Resource.Loading()
+        _deleteNoteState.value = Resource.Idle()
     }
 }

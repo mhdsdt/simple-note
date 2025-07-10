@@ -49,6 +49,7 @@ import com.example.simplenote.ui.components.AddNoteButton
 import com.example.simplenote.ui.components.NoteItem
 import com.example.simplenote.ui.components.TextLink
 import com.example.simplenote.ui.navigation.Screen
+import com.example.simplenote.ui.theme.NeutralLightGrey
 import com.example.simplenote.ui.theme.Text2XL
 import com.example.simplenote.ui.theme.TextBase
 import com.example.simplenote.util.Resource

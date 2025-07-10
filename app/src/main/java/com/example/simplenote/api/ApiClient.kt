@@ -49,8 +49,7 @@ class ApiClient @Inject constructor(private val tokenManager: TokenManager) {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // Pattern should match whatever your API returns; e.g. "2025-07-07T15:30:00Z"
-    private val timestampPattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"
+    private val timestampPattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSX"
 
     private val gson = GsonBuilder()
         .registerTypeAdapter(
@@ -68,4 +67,3 @@ class ApiClient @Inject constructor(private val tokenManager: TokenManager) {
             .create(ApiService::class.java)
     }
 }
-

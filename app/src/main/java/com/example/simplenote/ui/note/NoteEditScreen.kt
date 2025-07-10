@@ -2,28 +2,24 @@ package com.example.simplenote.ui.note
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.simplenote.util.Resource
 import com.example.simplenote.viewmodel.NoteViewModel
-import java.text.SimpleDateFormat
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -37,287 +33,185 @@ fun NoteEditScreen(
     val context = LocalContext.current
     val colors = MaterialTheme.colorScheme
 
-    //── 1) UI state
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     val isEditMode = noteId != null
 
-    //── 2) ViewModel flows
     val noteState by viewModel.noteState.collectAsState()
     val createState by viewModel.createNoteState.collectAsState()
     val updateState by viewModel.updateNoteState.collectAsState()
     val deleteState by viewModel.deleteNoteState.collectAsState()
 
-    //── 3) Trigger load once
-    LaunchedEffect(noteId) {
-        noteId?.let { viewModel.getNoteById(it) }
+    val isLoading = noteState is Resource.Loading ||
+            createState is Resource.Loading ||
+            updateState is Resource.Loading ||
+            deleteState is Resource.Loading
+
+    LaunchedEffect(Unit) {
+        if (isEditMode) {
+            noteId?.let { viewModel.getNoteById(it) }
+        } else {
+            viewModel.resetNoteState()
+            viewModel.resetCreateNoteState()
+            viewModel.resetUpdateNoteState()
+            viewModel.resetDeleteNoteState()
+        }
     }
 
-    //── 4) Populate form on load
     LaunchedEffect(noteState) {
-        when (noteState) {
-            is Resource.Loading -> isLoading = true
+        if (noteState is Resource.Success) {
+            noteState.data?.let {
+                title = it.title
+                description = it.description
+            }
+        } else if (noteState is Resource.Error) {
+            Toast.makeText(context, noteState.message ?: "Failed to load note", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(createState, updateState, deleteState) {
+        val combinedState: Resource<out Any> = when {
+            createState !is Resource.Idle -> createState
+            updateState !is Resource.Idle -> updateState
+            deleteState !is Resource.Idle -> deleteState
+            else -> Resource.Idle()
+        }
+
+        when (combinedState) {
             is Resource.Success -> {
-                isLoading = false
-                noteState.data?.let {
-                    title = it.title
-                    description = it.description
+                val message = when {
+                    createState is Resource.Success -> "Note created"
+                    updateState is Resource.Success -> "Note updated"
+                    deleteState is Resource.Success -> "Note deleted"
+                    else -> "Success"
                 }
-            }
-
-            is Resource.Error -> {
-                isLoading = false
-                errorMessage = noteState.message
-                Toast
-                    .makeText(context, errorMessage ?: "Failed to load note", Toast.LENGTH_SHORT)
-                    .show()
-            }
-
-            else -> { /* idle */
-            }
-        }
-    }
-
-    //── 5) Handle create/update
-    LaunchedEffect(createState, updateState) {
-        when {
-            createState is Resource.Loading || updateState is Resource.Loading -> {
-                isLoading = true
-            }
-
-            createState is Resource.Success || updateState is Resource.Success -> {
-                isLoading = false
-                Toast
-                    .makeText(
-                        context,
-                        if (isEditMode) "Note updated successfully" else "Note created successfully",
-                        Toast.LENGTH_SHORT
-                    )
-                    .show()
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 navController.popBackStack()
             }
-
-            createState is Resource.Error -> {
-                isLoading = false
-                errorMessage = (createState as Resource.Error).message
-                Toast.makeText(context, errorMessage ?: "Failed to create", Toast.LENGTH_SHORT)
-                    .show()
-            }
-
-            updateState is Resource.Error -> {
-                isLoading = false
-                errorMessage = (updateState as Resource.Error).message
-                Toast.makeText(context, errorMessage ?: "Failed to update", Toast.LENGTH_SHORT)
-                    .show()
-            }
-        }
-    }
-
-    //── 6) Handle delete
-    LaunchedEffect(deleteState) {
-        when (deleteState) {
-            is Resource.Loading -> isLoading = true
-            is Resource.Success -> {
-                isLoading = false
-                Toast.makeText(context, "Note deleted", Toast.LENGTH_SHORT).show()
-                navController.popBackStack()
-            }
-
             is Resource.Error -> {
-                isLoading = false
-                val msg = (deleteState as Resource.Error).message
-                Toast.makeText(context, msg ?: "Failed to delete", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, combinedState.message ?: "An error occurred", Toast.LENGTH_SHORT).show()
             }
-
-            else -> { /* idle */
-            }
+            else -> {}
         }
-    }
-
-    val timeFormatter = remember {
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm", Locale.getDefault())
     }
 
     val lastEdited = remember(noteState) {
-        (noteState as? Resource.Success)
-            ?.data
-            ?.updatedAt
-            // format the LocalDateTime
-            ?.format(timeFormatter)
-        // fallback if we don’t have an updatedAt yet
-            ?: ""
+        (noteState as? Resource.Success)?.data?.updatedAt?.format(
+            DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
+        ) ?: "Not saved yet"
     }
 
     Scaffold(
-        modifier = Modifier.height(56.dp)
-            // draw under the status‐bar
-            .windowInsetsPadding(WindowInsets.statusBars),
+        modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
         topBar = {
             TopAppBar(
-                modifier = Modifier.height(52.dp),
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.surface,
-                    titleContentColor = colors.primary,
-                ),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surface),
                 title = {},
                 navigationIcon = {
-                    // Make a Box (or IconButton) that fills the app‐bar's height:
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .clickable { navController.popBackStack() }
-                            .padding(start = 16.dp),
-                        contentAlignment = Alignment.CenterStart
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, "Back", tint = colors.primary)
+                    }
+                },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            if (title.isBlank()) {
+                                Toast.makeText(context, "Title cannot be empty", Toast.LENGTH_SHORT).show()
+                                return@TextButton
+                            }
+                            if (isEditMode) {
+                                noteId?.let { viewModel.updateNote(it, title, description) }
+                            } else {
+                                viewModel.createNote(title, description)
+                            }
+                        },
+                        enabled = !isLoading
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector    = Icons.Filled.ArrowBack,
-                                tint           = colors.primary,
-                                modifier = Modifier.size(16.dp),
-                                contentDescription = "Back"
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text  = "Back",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = colors.primary
-                            )
+                        Text("Save", color = colors.primary)
+                    }
+                    if (isEditMode) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(Icons.Default.Delete, "Delete", tint = colors.error)
                         }
                     }
                 }
             )
         },
         bottomBar = {
-            Column {
-                Divider(color = colors.surfaceVariant, thickness = 1.dp)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .background(colors.surface),
-                    verticalAlignment = Alignment.CenterVertically
+            if (isEditMode) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(48.dp).background(colors.surface),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Last edited on $lastEdited",
-                        fontSize = 12.sp,
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 16.dp)
-                    )
-                    Spacer(Modifier.weight(1f))
-                    IconButton(
-                        onClick = { showDeleteDialog = true },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .padding(end = 16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Delete",
-                            tint = colors.error,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    Text(text = "Last edited: $lastEdited", fontSize = 12.sp, color = colors.onSurfaceVariant)
                 }
             }
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(colors.background)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = colors.primary
-                )
+            if (isLoading && noteState is Resource.Loading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             } else {
-                Column(
-                    modifier = Modifier
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 16.dp)
-                ) {
-                    // Title row
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Filled.Lightbulb,
-                            contentDescription = null,
-                            tint = colors.tertiary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = title,
-                            fontSize = 24.sp,
-                            color = colors.onBackground,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                    }
-                    Spacer(Modifier.height(16.dp))
-
-                    // Body paragraphs
-                    description.split("\n\n").forEachIndexed { idx, para ->
-                        Text(
-                            text = para,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
-                            color = colors.onBackground.copy(alpha = 0.8f),
-                        )
-                        if (idx < description.split("\n\n").lastIndex) {
-                            Spacer(Modifier.height(8.dp))
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-
-                    // inset divider
-                    Divider(
-                        color = colors.surfaceVariant,
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                TextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = { Text("Title", style = MaterialTheme.typography.titleLarge) },
+                    textStyle = MaterialTheme.typography.titleLarge.copy(color = colors.onBackground),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = colors.surfaceVariant,
+                        unfocusedIndicatorColor = Color.Transparent
                     )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    placeholder = { Text("Start writing your note here...") },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp, color = colors.onBackground),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 300.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
+            }
+        }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Delete Note?") },
+                text = { Text("Are you sure you want to permanently delete this note?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showDeleteDialog = false
+                        noteId?.let { viewModel.deleteNote(it) }
+                    }) {
+                        Text("Delete", color = colors.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel")
+                    }
                 }
-            }
-
-            // error at bottom
-            errorMessage?.let { msg ->
-                Text(
-                    text = msg,
-                    color = colors.error,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                )
-            }
-
-            // Compose AlertDialog for “Are you sure?”
-            if (showDeleteDialog) {
-                AlertDialog(
-                    onDismissRequest = { showDeleteDialog = false },
-                    title = { Text("Are you sure?") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            showDeleteDialog = false
-                            noteId?.let { viewModel.deleteNote(it) }
-                        }) {
-                            Text("Delete", color = colors.error)
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDeleteDialog = false }) {
-                            Text("Cancel", color = colors.primary)
-                        }
-                    },
-                    containerColor = colors.surface,
-                    iconContentColor = colors.primary,
-                    titleContentColor = colors.onSurface,
-                    textContentColor = colors.onSurface
-                )
-            }
+            )
         }
     }
 }
