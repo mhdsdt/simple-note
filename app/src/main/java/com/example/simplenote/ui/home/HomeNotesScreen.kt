@@ -142,15 +142,6 @@ fun HomeNotesScreen(
                 }
             }
 
-            Text(
-                text = "Notes",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            )
-
             if (searchQuery.isNotBlank()) {
                 // Search Content
                 when (val state = searchState) {
@@ -212,6 +203,14 @@ fun HomeNotesScreen(
                         if (paginatedNotes.isEmpty()) {
                             HomeEmptyContent()
                         } else {
+                            Text(
+                                text = "Notes",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
                             LazyVerticalStaggeredGrid(
                                 state = gridState,
                                 columns = StaggeredGridCells.Fixed(2),
