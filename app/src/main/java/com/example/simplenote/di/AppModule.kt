@@ -1,11 +1,16 @@
 package com.example.simplenote.di
 
 import android.content.Context
+import androidx.room.Room
+import androidx.work.WorkManager
 import com.example.simplenote.api.ApiClient
 import com.example.simplenote.api.ApiService
 import com.example.simplenote.data.local.TokenManager
+import com.example.simplenote.data.local.db.AppDatabase
+import com.example.simplenote.data.local.db.NoteDao
 import com.example.simplenote.data.repository.AuthRepository
 import com.example.simplenote.data.repository.NoteRepository
+import com.example.simplenote.sync.NetworkMonitor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -43,7 +48,39 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNoteRepository(apiService: ApiService): NoteRepository {
-        return NoteRepository(apiService)
+    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
+        return Room.databaseBuilder(
+            context,
+            AppDatabase::class.java,
+            "simplenote_db"
+        ).build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNoteDao(database: AppDatabase): NoteDao {
+        return database.noteDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNetworkMonitor(@ApplicationContext context: Context): NetworkMonitor {
+        return NetworkMonitor(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNoteRepository(
+        apiService: ApiService,
+        noteDao: NoteDao,
+        workManager: WorkManager
+    ): NoteRepository {
+        return NoteRepository(apiService, noteDao, workManager)
     }
 }
