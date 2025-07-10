@@ -2,18 +2,13 @@ package com.example.simplenote.ui.profile
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,21 +18,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.simplenote.ui.components.PasswordTextField
 import com.example.simplenote.ui.components.PrimaryButton
-import com.example.simplenote.ui.components.TextLink
-import com.example.simplenote.ui.theme.TextBase
-import compose.icons.TablerIcons
-import compose.icons.tablericons.ChevronLeft
+import com.example.simplenote.ui.components.SimpleTopAppBar
 import com.example.simplenote.util.Resource
 import com.example.simplenote.viewmodel.AuthViewModel
 
@@ -78,47 +67,7 @@ fun ChangePasswordScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Box(
-                    modifier = Modifier.weight(0.8f),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    TextLink(
-                        text = "Back",
-                        onClick = { navController.popBackStack() },
-                        color = MaterialTheme.colorScheme.primary,
-                        startIcon = {
-                            Icon(
-                                imageVector = TablerIcons.ChevronLeft,
-                                contentDescription = "Back",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    )
-                }
-                Text(
-                    text = "Change Password",
-                    style = TextBase.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1.4f),
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
-                Box(modifier = Modifier.weight(0.8f))
-            }
-            Divider(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
-            )
+            SimpleTopAppBar(navController = navController, title = "Change Password")
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -138,7 +87,7 @@ fun ChangePasswordScreen(
                     imeAction = ImeAction.Next
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                Divider(
+                androidx.compose.material3.Divider(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp),

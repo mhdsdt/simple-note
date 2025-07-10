@@ -1,23 +1,26 @@
 package com.example.simplenote.ui.note
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.simplenote.ui.components.SimpleTopAppBar
 import com.example.simplenote.util.Resource
 import com.example.simplenote.viewmodel.NoteViewModel
 import java.time.format.DateTimeFormatter
@@ -37,6 +40,9 @@ fun NoteEditScreen(
     var description by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
+    var initialTitle by remember { mutableStateOf<String?>(null) }
+    var initialDescription by remember { mutableStateOf<String?>(null) }
+
     val isEditMode = noteId != null
 
     val noteState by viewModel.noteState.collectAsState()
@@ -49,10 +55,30 @@ fun NoteEditScreen(
             updateState is Resource.Loading ||
             deleteState is Resource.Loading
 
+    val saveNote = {
+        val hasChanges = title != initialTitle || description != initialDescription
+        if (hasChanges && title.isNotBlank()) {
+            if (isEditMode) {
+                noteId?.let { viewModel.updateNote(it, title, description) }
+            } else {
+                viewModel.createNote(title, description)
+            }
+        }
+    }
+
+    val handleBackPress = {
+        saveNote()
+        navController.popBackStack()
+    }
+
+    BackHandler { handleBackPress() }
+
     LaunchedEffect(Unit) {
         if (isEditMode) {
             noteId?.let { viewModel.getNoteById(it) }
         } else {
+            initialTitle = ""
+            initialDescription = ""
             viewModel.resetNoteState()
             viewModel.resetCreateNoteState()
             viewModel.resetUpdateNoteState()
@@ -65,6 +91,8 @@ fun NoteEditScreen(
             noteState.data?.let {
                 title = it.title
                 description = it.description
+                initialTitle = it.title
+                initialDescription = it.description
             }
         } else if (noteState is Resource.Error) {
             Toast.makeText(context, noteState.message ?: "Failed to load note", Toast.LENGTH_SHORT).show()
@@ -81,14 +109,10 @@ fun NoteEditScreen(
 
         when (combinedState) {
             is Resource.Success -> {
-                val message = when {
-                    createState is Resource.Success -> "Note created"
-                    updateState is Resource.Success -> "Note updated"
-                    deleteState is Resource.Success -> "Note deleted"
-                    else -> "Success"
+                if (combinedState !is Resource.Success || deleteState is Resource.Success) {
+                    Toast.makeText(context, "Note deleted", Toast.LENGTH_SHORT).show()
+                    navController.popBackStack()
                 }
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                navController.popBackStack()
             }
             is Resource.Error -> {
                 Toast.makeText(context, combinedState.message ?: "An error occurred", Toast.LENGTH_SHORT).show()
@@ -99,53 +123,46 @@ fun NoteEditScreen(
 
     val lastEdited = remember(noteState) {
         (noteState as? Resource.Success)?.data?.updatedAt?.format(
-            DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
-        ) ?: "Not saved yet"
+            DateTimeFormatter.ofPattern("HH.mm", Locale.getDefault())
+        ) ?: "..."
     }
 
     Scaffold(
         modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surface),
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = colors.primary)
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = {
-                            if (title.isBlank()) {
-                                Toast.makeText(context, "Title cannot be empty", Toast.LENGTH_SHORT).show()
-                                return@TextButton
-                            }
-                            if (isEditMode) {
-                                noteId?.let { viewModel.updateNote(it, title, description) }
-                            } else {
-                                viewModel.createNote(title, description)
-                            }
-                        },
-                        enabled = !isLoading
-                    ) {
-                        Text("Save", color = colors.primary)
-                    }
-                    if (isEditMode) {
-                        IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Default.Delete, "Delete", tint = colors.error)
-                        }
-                    }
-                }
+            SimpleTopAppBar(
+                navController = navController,
+                title = if (isEditMode) "Edit Note" else "Create Note",
+                onNavigateBack = { handleBackPress() }
             )
         },
         bottomBar = {
             if (isEditMode) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(48.dp).background(colors.surface),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .background(colors.surface)
+                        .padding(start = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = "Last edited: $lastEdited", fontSize = 12.sp, color = colors.onSurfaceVariant)
+                    Text(text = "Last edited on $lastEdited", fontSize = 12.sp, color = colors.onSurfaceVariant)
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(0.dp))
+                            .background(colors.primary)
+                    ) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.simplenote.ui.components.SimpleTopAppBar
 import com.example.simplenote.ui.components.TextLink
 import com.example.simplenote.ui.navigation.Screen
 import com.example.simplenote.ui.theme.TextBase
@@ -49,7 +50,6 @@ import com.example.simplenote.ui.theme.TextXS
 import com.example.simplenote.util.Resource
 import com.example.simplenote.viewmodel.AuthViewModel
 import compose.icons.TablerIcons
-import compose.icons.tablericons.ChevronLeft
 import compose.icons.tablericons.ChevronRight
 import compose.icons.tablericons.Lock
 import compose.icons.tablericons.Logout
@@ -80,51 +80,7 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            // Top app bar with back button and centered title
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Back button aligned to the left
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                    TextLink(
-                        text = "Back",
-                        onClick = { navController.popBackStack() },
-                        color = MaterialTheme.colorScheme.primary,
-                        startIcon = {
-                            Icon(
-                                imageVector = TablerIcons.ChevronLeft,
-                                contentDescription = "Back",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                    )
-                }
-
-                // Title centered in the row
-                Text(
-                    text = "Settings",
-                    style = TextBase.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center
-                )
-
-                // Empty box with same weight to ensure centering
-                Box(modifier = Modifier.weight(1f))
-            }
-
-
-            Divider(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
-            )
+            SimpleTopAppBar(navController = navController, title = "Settings")
 
             when (val state = userInfoState) {
                 is Resource.Idle, is Resource.Loading -> {
