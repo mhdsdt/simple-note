@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.simplenote.api.models.NoteResponse
+import com.example.simplenote.ui.theme.NeutralBaseGrey
+import com.example.simplenote.ui.theme.NeutralDarkGrey
 import com.example.simplenote.ui.theme.TextBase
 import com.example.simplenote.ui.theme.TextSM
 
@@ -41,9 +43,9 @@ fun NoteItem(
         ) {
             Text(
                 text = note.title,
-                style = TextBase.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
@@ -53,8 +55,8 @@ fun NoteItem(
         Text(
             text = note.description,
             style = TextSM,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            maxLines = 3,
+            color = NeutralDarkGrey,
+            maxLines = 10,
             overflow = TextOverflow.Ellipsis
         )
     }
