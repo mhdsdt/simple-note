@@ -19,9 +19,19 @@ class NoteViewModel @Inject constructor(
     private val noteRepository: NoteRepository
 ) : ViewModel() {
 
-    private val _notesState = MutableStateFlow<Resource<NotesListResponse>>(Resource.Idle())
-    val notesState: StateFlow<Resource<NotesListResponse>> = _notesState
+    private val _paginatedNotes = MutableStateFlow<List<NoteResponse>>(emptyList())
+    val paginatedNotes: StateFlow<List<NoteResponse>> = _paginatedNotes
 
+    private val _screenState = MutableStateFlow<Resource<Unit>>(Resource.Idle())
+    val screenState: StateFlow<Resource<Unit>> = _screenState
+
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
+
+    private var currentPage = 1
+    private var canPaginate = true
+
+    // Other states
     private val _noteState = MutableStateFlow<Resource<NoteResponse>>(Resource.Idle())
     val noteState: StateFlow<Resource<NoteResponse>> = _noteState
 
@@ -37,12 +47,59 @@ class NoteViewModel @Inject constructor(
     private val _searchState = MutableStateFlow<Resource<NotesListResponse>>(Resource.Idle())
     val searchState: StateFlow<Resource<NotesListResponse>> = _searchState
 
-    fun getNotes(page: Int? = null, pageSize: Int? = null) {
+    init {
+        loadMoreNotes()
+    }
+
+    fun loadMoreNotes() {
+        if (_isLoadingMore.value || !canPaginate) return
+
         viewModelScope.launch {
-            noteRepository.getNotes(page, pageSize).onEach { result ->
-                _notesState.value = result
+            _isLoadingMore.value = true
+            if (currentPage == 1) {
+                _screenState.value = Resource.Loading()
+            }
+
+            // Fetches 20 items per page
+            noteRepository.getNotes(page = currentPage, pageSize = 20).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        result.data?.let {
+                            _paginatedNotes.value = _paginatedNotes.value + it.results
+                            canPaginate = it.next != null
+                            currentPage++
+                            _screenState.value = Resource.Success(Unit)
+                        } ?: run {
+                            _screenState.value = Resource.Error("Empty response")
+                        }
+                    }
+                    is Resource.Error -> {
+                        _screenState.value = Resource.Error(result.message ?: "An error occurred")
+                    }
+                    else -> {}
+                }
+            }
+            _isLoadingMore.value = false
+        }
+    }
+
+    fun refreshNotes() {
+        currentPage = 1
+        canPaginate = true
+        _paginatedNotes.value = emptyList()
+        loadMoreNotes()
+    }
+
+    fun searchNotes(query: String) {
+        viewModelScope.launch {
+            noteRepository.searchNotes(title = query, description = query).onEach { result ->
+                _searchState.value = result
             }.launchIn(viewModelScope)
         }
+    }
+
+    fun clearSearch() {
+        _searchState.value = Resource.Idle()
     }
 
     fun getNoteById(id: Int) {
@@ -58,7 +115,7 @@ class NoteViewModel @Inject constructor(
             noteRepository.createNote(title, description).onEach { result ->
                 _createNoteState.value = result
                 if (result is Resource.Success) {
-                    getNotes()
+                    refreshNotes()
                 }
             }.launchIn(viewModelScope)
         }
@@ -69,7 +126,7 @@ class NoteViewModel @Inject constructor(
             noteRepository.updateNote(id, title, description).onEach { result ->
                 _updateNoteState.value = result
                 if (result is Resource.Success) {
-                    getNotes()
+                    refreshNotes()
                 }
             }.launchIn(viewModelScope)
         }
@@ -80,16 +137,8 @@ class NoteViewModel @Inject constructor(
             noteRepository.deleteNote(id).onEach { result ->
                 _deleteNoteState.value = result
                 if (result is Resource.Success) {
-                    getNotes()
+                    refreshNotes()
                 }
-            }.launchIn(viewModelScope)
-        }
-    }
-
-    fun searchNotes(query: String) {
-        viewModelScope.launch {
-            noteRepository.searchNotes(title = query, description = query).onEach { result ->
-                _searchState.value = result
             }.launchIn(viewModelScope)
         }
     }

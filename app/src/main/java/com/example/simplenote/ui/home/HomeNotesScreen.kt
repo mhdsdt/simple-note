@@ -1,6 +1,5 @@
 package com.example.simplenote.ui.home
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,7 +44,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.simplenote.R
 import com.example.simplenote.ui.components.AddNoteButton
@@ -58,29 +58,44 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.Home
 import compose.icons.tablericons.Search
 import compose.icons.tablericons.Settings
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeNotesScreen(
     navController: NavController,
-    viewModel: NoteViewModel = hiltViewModel()
+    viewModel: NoteViewModel
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val notesState by viewModel.notesState.collectAsState()
-    val searchState by viewModel.searchState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        viewModel.getNotes()
+    val paginatedNotes by viewModel.paginatedNotes.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val searchState by viewModel.searchState.collectAsState()
+    val gridState = rememberLazyStaggeredGridState()
+
+    // Pagination observer
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.layoutInfo }
+            .map { it.visibleItemsInfo.lastOrNull()?.index }
+            .distinctUntilChanged()
+            .filter { it != null && it >= paginatedNotes.size - 3 } // threshold of 3 items from the end
+            .collect {
+                viewModel.loadMoreNotes()
+            }
     }
+
+    // Search observer
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
             viewModel.searchNotes(searchQuery)
+        } else {
+            viewModel.clearSearch()
         }
     }
 
-    val shouldShowSearchBar = searchQuery.isNotBlank() ||
-            (notesState is Resource.Success &&
-                    !notesState.data?.results.isNullOrEmpty())
+    val shouldShowSearchBar = searchQuery.isNotBlank() || paginatedNotes.isNotEmpty()
 
     Box(
         modifier = Modifier
@@ -90,11 +105,13 @@ fun HomeNotesScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             if (shouldShowSearchBar) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -123,7 +140,6 @@ fun HomeNotesScreen(
                         singleLine = true,
                     )
                 }
-                Spacer(modifier = Modifier.height(24.dp))
             }
 
             Text(
@@ -136,22 +152,19 @@ fun HomeNotesScreen(
             )
 
             if (searchQuery.isNotBlank()) {
+                // Search Content
                 when (val state = searchState) {
-                    is Resource.Idle,
-                    is Resource.Loading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
+                    is Resource.Loading -> Box(
+                        Modifier.fillMaxSize(),
+                        Alignment.Center
+                    ) { CircularProgressIndicator() }
 
                     is Resource.Success -> {
                         if (state.data?.results.isNullOrEmpty()) {
-                            HomeEmptyContent()
+                            Box(
+                                Modifier.fillMaxSize(),
+                                Alignment.Center
+                            ) { Text("No notes found for '$searchQuery'") }
                         } else {
                             LazyVerticalStaggeredGrid(
                                 columns = StaggeredGridCells.Fixed(2),
@@ -159,96 +172,78 @@ fun HomeNotesScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalItemSpacing = 8.dp
                             ) {
-                                items(state.data?.results ?: emptyList()) { note ->
+                                items(state.data?.results ?: emptyList(), key = { it.id }) { note ->
                                     NoteItem(
                                         note = note,
-                                        onClick = {
-                                            navController.navigate(
-                                                Screen.NoteEdit.route +
-                                                        "?noteId=${note.id}"
-                                            )
-                                        }
-                                    )
+                                        onClick = { navController.navigate(Screen.NoteEdit.route + "?noteId=${note.id}") })
                                 }
                             }
                         }
                     }
 
-                    is Resource.Error -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = state.message ?: "An error occurred",
-                                color = MaterialTheme.colorScheme.onBackground,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
+                    is Resource.Error -> Box(
+                        Modifier.fillMaxSize(),
+                        Alignment.Center
+                    ) { Text(state.message ?: "Search failed") }
+
+                    else -> {}
                 }
             } else {
-                when (val state = notesState) {
-                    is Resource.Idle,
-                    is Resource.Loading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-
-                    is Resource.Success -> {
-                        if (state.data?.results.isNullOrEmpty()) {
-                            HomeEmptyContent()
-                        } else {
-                            LazyVerticalStaggeredGrid(
-                                columns = StaggeredGridCells.Fixed(2),
-                                contentPadding = PaddingValues(bottom = 80.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalItemSpacing = 8.dp
-                            ) {
-                                items(state.data?.results ?: emptyList()) { note ->
-                                    NoteItem(
-                                        note = note,
-                                        onClick = {
-                                            navController.navigate(
-                                                Screen.NoteEdit.route +
-                                                        "?noteId=${note.id}"
-                                            )
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                // Paginated Content
+                when (screenState) {
+                    is Resource.Loading -> Box(
+                        Modifier.fillMaxSize(),
+                        Alignment.Center
+                    ) { CircularProgressIndicator() }
 
                     is Resource.Error -> {
                         Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            Modifier.fillMaxSize(),
+                            Arrangement.Center,
+                            Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = state.message ?: "An error occurred",
-                                color = MaterialTheme.colorScheme.onBackground,
-                                textAlign = TextAlign.Center
-                            )
+                            Text((screenState as Resource.Error).message ?: "An error occurred")
+                            Spacer(Modifier.height(16.dp))
+                            TextLink(text = "Try again", onClick = { viewModel.refreshNotes() })
+                        }
+                    }
 
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            TextLink(
-                                text = "Try again",
-                                onClick = { viewModel.getNotes() }
-                            )
+                    is Resource.Success, is Resource.Idle -> {
+                        if (paginatedNotes.isEmpty()) {
+                            HomeEmptyContent()
+                        } else {
+                            LazyVerticalStaggeredGrid(
+                                state = gridState,
+                                columns = StaggeredGridCells.Fixed(2),
+                                contentPadding = PaddingValues(bottom = 90.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalItemSpacing = 8.dp
+                            ) {
+                                items(paginatedNotes, key = { it.id }) { note ->
+                                    NoteItem(
+                                        note = note,
+                                        onClick = { navController.navigate(Screen.NoteEdit.route + "?noteId=${note.id}") })
+                                }
+                                if (isLoadingMore) {
+                                    item {
+                                        Box(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(strokeWidth = 3.dp)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+
+        // Bottom Navigation
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.BottomCenter
@@ -264,39 +259,36 @@ fun HomeNotesScreen(
                     onClick = { },
                     icon = {
                         Icon(
-                            imageVector = TablerIcons.Home,
-                            contentDescription = "Home",
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            TablerIcons.Home,
+                            "Home",
+                            Modifier.size(32.dp),
+                            MaterialTheme.colorScheme.primary
                         )
                     },
                     label = {
                         Text(
-                            text = "Home",
+                            "Home",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                     },
                     alwaysShowLabel = true,
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.surface
-                    )
+                    colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surface)
                 )
-
                 NavigationBarItem(
                     selected = false,
                     onClick = { navController.navigate(Screen.Profile.route) },
                     icon = {
                         Icon(
-                            imageVector = TablerIcons.Settings,
-                            contentDescription = "Settings",
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            TablerIcons.Settings,
+                            "Settings",
+                            Modifier.size(32.dp),
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     },
                     label = {
                         Text(
-                            text = "Settings",
+                            "Settings",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
@@ -306,7 +298,7 @@ fun HomeNotesScreen(
                 )
             }
             Box(
-                modifier = Modifier.offset(y = (-62).dp)
+                modifier = Modifier.offset(y = (-45).dp)
             ) {
                 AddNoteButton(
                     onClick = { navController.navigate(Screen.NoteEdit.route) }
@@ -315,6 +307,7 @@ fun HomeNotesScreen(
         }
     }
 }
+
 
 @Composable
 fun HomeEmptyContent() {
