@@ -1,5 +1,6 @@
 package com.example.simplenote.ui.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,9 +16,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -49,7 +50,6 @@ import com.example.simplenote.ui.components.AddNoteButton
 import com.example.simplenote.ui.components.NoteItem
 import com.example.simplenote.ui.components.TextLink
 import com.example.simplenote.ui.navigation.Screen
-import com.example.simplenote.ui.theme.NeutralLightGrey
 import com.example.simplenote.ui.theme.Text2XL
 import com.example.simplenote.ui.theme.TextBase
 import com.example.simplenote.util.Resource
@@ -59,6 +59,7 @@ import compose.icons.tablericons.Home
 import compose.icons.tablericons.Search
 import compose.icons.tablericons.Settings
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeNotesScreen(
     navController: NavController,
@@ -152,11 +153,11 @@ fun HomeNotesScreen(
                         if (state.data?.results.isNullOrEmpty()) {
                             HomeEmptyContent()
                         } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
+                            LazyVerticalStaggeredGrid(
+                                columns = StaggeredGridCells.Fixed(2),
                                 contentPadding = PaddingValues(bottom = 80.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalItemSpacing = 8.dp
                             ) {
                                 items(state.data?.results ?: emptyList()) { note ->
                                     NoteItem(
@@ -204,11 +205,11 @@ fun HomeNotesScreen(
                         if (state.data?.results.isNullOrEmpty()) {
                             HomeEmptyContent()
                         } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
+                            LazyVerticalStaggeredGrid(
+                                columns = StaggeredGridCells.Fixed(2),
                                 contentPadding = PaddingValues(bottom = 80.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalItemSpacing = 8.dp
                             ) {
                                 items(state.data?.results ?: emptyList()) { note ->
                                     NoteItem(
@@ -339,7 +340,7 @@ fun HomeEmptyContent() {
         Spacer(modifier = Modifier.height(32.dp))
         Text(
             text = "Start Your Journey",
-            style = Text2XL.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+            style = Text2XL.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
