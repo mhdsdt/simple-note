@@ -87,24 +87,26 @@ fun NoteEditScreen(
     }
 
     val saveNoteAndExit = {
-        if (title.isNotBlank() || description.isNotBlank()) {
-            val originalTitle = noteState?.title ?: ""
-            val originalDescription = noteState?.description ?: ""
-            val hasChanges = title != originalTitle || description != originalDescription
+        val originalTitle = noteState?.title ?: ""
+        val originalDescription = noteState?.description ?: ""
+        val hasChanges = title != originalTitle || description != originalDescription
 
-            if (hasChanges) {
+        if (hasChanges) {
+            if (title.isBlank() || description.isBlank()) {
+                Toast.makeText(context, "Title and description cannot be empty", Toast.LENGTH_SHORT)
+                    .show()
+            } else {
                 if (isEditMode) {
                     viewModel.updateNote(noteId!!, title, description)
                 } else {
                     viewModel.createNote(title, description)
                 }
+                navController.popBackStack()
             }
-        } else if (isEditMode) {
-            // Delete if the note existed before and is now empty
-            viewModel.deleteNote(noteId!!)
-            Toast.makeText(context, "Note deleted.", Toast.LENGTH_SHORT).show()
+        } else {
+            // Case 2: No changes were made, so just exit silently.
+            navController.popBackStack()
         }
-        navController.popBackStack()
     }
 
     BackHandler { saveNoteAndExit() }

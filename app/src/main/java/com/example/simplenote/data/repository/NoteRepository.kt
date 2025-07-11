@@ -1,5 +1,6 @@
 package com.example.simplenote.data.repository
 
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -100,6 +101,10 @@ class NoteRepository @Inject constructor(
                             // Replace temporary local note with the one from the server
                             noteDao.deleteNoteById(note.id)
                             noteDao.upsertNote(response.body()!!.toNoteEntity(SyncStatus.SYNCED))
+                        } else {
+                            // If the server rejected it, we throw an exception to keep the
+                            // local note in an unsynced state so it can be retried later.
+                            throw Exception("Server rejected new note. Code: ${response.code()}")
                         }
                     }
 
@@ -108,6 +113,8 @@ class NoteRepository @Inject constructor(
                         val response = apiService.updateNote(note.id, request)
                         if (response.isSuccessful && response.body() != null) {
                             noteDao.upsertNote(response.body()!!.toNoteEntity(SyncStatus.SYNCED))
+                        } else {
+                            throw Exception("Server rejected note update. Code: ${response.code()}")
                         }
                     }
 
@@ -116,6 +123,14 @@ class NoteRepository @Inject constructor(
                         if (response.isSuccessful) {
                             // Permanently delete from local DB after successful server deletion
                             noteDao.deleteNoteById(note.id)
+                        } else {
+                            // If the note was already deleted on another device, a 404 is acceptable
+                            if (response.code() != 404) {
+                                throw Exception("Server rejected note deletion. Code: ${response.code()}")
+                            } else {
+                                // If it's already gone from the server, just delete it locally.
+                                noteDao.deleteNoteById(note.id)
+                            }
                         }
                     }
 
@@ -124,6 +139,7 @@ class NoteRepository @Inject constructor(
                 }
             } catch (e: Exception) {
                 // Log error and continue with the next note
+                Log.e("SyncPushError", "Failed to sync note ${note.id}: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -133,9 +149,26 @@ class NoteRepository @Inject constructor(
         try {
             val response = apiService.getNotes(pageSize = 1000) // Get all notes
             if (response.isSuccessful && response.body() != null) {
-                val remoteNotes =
-                    response.body()!!.results.map { it.toNoteEntity(SyncStatus.SYNCED) }
-                noteDao.upsertAll(remoteNotes)
+                val remoteNotes = response.body()!!.results
+                val remoteNoteEntities = remoteNotes.map { it.toNoteEntity(SyncStatus.SYNCED) }
+                val remoteNoteIds = remoteNotes.map { it.id }.toSet()
+
+                // Get all local notes that are currently marked as SYNCED
+                val localSyncedNotes = noteDao.getLocalSyncedNotes()
+
+                // Figure out which local notes are no longer on the server
+                val notesToDelete = localSyncedNotes.filter { localNote ->
+                    localNote.id !in remoteNoteIds
+                }
+
+                // If there are notes to delete, remove them from the local database
+                if (notesToDelete.isNotEmpty()) {
+                    val idsToDelete = notesToDelete.map { it.id }
+                    noteDao.deleteNotesByIds(idsToDelete)
+                }
+
+                // Finally, update the local database with the fresh list from the server
+                noteDao.upsertAll(remoteNoteEntities)
             }
         } catch (e: Exception) {
             e.printStackTrace()

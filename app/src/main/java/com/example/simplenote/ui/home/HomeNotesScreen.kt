@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -50,6 +51,7 @@ import com.example.simplenote.ui.theme.TextBase
 import com.example.simplenote.viewmodel.NoteViewModel
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Home
+import compose.icons.tablericons.Refresh
 import compose.icons.tablericons.Search
 import compose.icons.tablericons.Settings
 
@@ -125,15 +127,26 @@ fun HomeNotesScreen(
                     )
                 }
 
-                // 2. Centered "Notes" title
-                Text(
-                    text = "Notes",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    textAlign = TextAlign.Center
-                )
+                        .padding(bottom = 16.dp)
+                ) {
+                    Text(
+                        text = "Notes",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.align(Alignment.Center),
+                        textAlign = TextAlign.Center
+                    )
+
+                    // This IconButton MUST be inside the Box to use Modifier.align()
+                    IconButton(
+                        onClick = { viewModel.triggerSync() },
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
+                        Icon(TablerIcons.Refresh, contentDescription = "Sync Notes")
+                    }
+                }
             }
 
             if (filteredNotes.isEmpty()) {
