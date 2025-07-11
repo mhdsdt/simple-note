@@ -169,7 +169,7 @@ fun HomeNotesScreen(
                             Text("No notes found for '$searchQuery'")
                         }
                     } else {
-                        HomeEmptyContent()
+                        HomeEmptyContent(onSyncClick = { viewModel.triggerSync() })
                     }
                 } else {
                     // Case 3: Data is loaded and we have notes to show
@@ -258,26 +258,19 @@ fun HomeNotesScreen(
 }
 
 @Composable
-fun HomeEmptyContent() {
+fun HomeEmptyContent(onSyncClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 100.dp, start = 24.dp, end = 24.dp, bottom = 24.dp),
+            .padding(top = 24.dp, start = 24.dp, end = 24.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
+        verticalArrangement = Arrangement.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.home),
-                contentDescription = "Home illustration",
-                modifier = Modifier.size(280.dp)
-            )
-        }
+        Image(
+            painter = painterResource(id = R.drawable.home),
+            contentDescription = "Home illustration",
+            modifier = Modifier.size(280.dp)
+        )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
             text = "Start Your Journey",
@@ -292,5 +285,16 @@ fun HomeEmptyContent() {
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
         )
+        Spacer(modifier = Modifier.height(48.dp))
+
+        // NEW: The manual sync button
+        IconButton(onClick = onSyncClick) {
+            Icon(
+                imageVector = TablerIcons.Refresh,
+                contentDescription = "Sync Notes",
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
