@@ -1,27 +1,29 @@
 package com.example.simplenote.ui.home
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,9 +46,10 @@ import com.example.simplenote.ui.theme.Text2XL
 import com.example.simplenote.ui.theme.TextBase
 import com.example.simplenote.viewmodel.NoteViewModel
 import compose.icons.TablerIcons
+import compose.icons.tablericons.Home
 import compose.icons.tablericons.Refresh
+import compose.icons.tablericons.Settings
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeNotesScreen(
     navController: NavController,
@@ -55,7 +58,6 @@ fun HomeNotesScreen(
     var searchQuery by remember { mutableStateOf("") }
     val allNotes by viewModel.allNotes.collectAsState()
 
-    // Filter notes based on search query
     val filteredNotes = remember(searchQuery, allNotes) {
         if (searchQuery.isBlank()) {
             allNotes
@@ -67,36 +69,35 @@ fun HomeNotesScreen(
         }
     }
 
-    val shouldShowSearchBar = allNotes.isNotEmpty() || searchQuery.isNotBlank()
+    val shouldShowContent = allNotes.isNotEmpty() || searchQuery.isNotBlank()
 
-    Scaffold(
-        topBar = {
-            if (shouldShowSearchBar) {
-                TopAppBar(
-                    title = { Text("Notes", fontWeight = FontWeight.Bold) },
-                    actions = {
-                        IconButton(onClick = { viewModel.triggerSync() }) {
-                            Icon(TablerIcons.Refresh, contentDescription = "Sync Notes")
-                        }
-                    },
-//                    colors = TopAppBarDefaults.topAppBarColors(
-//                        containerColor = MaterialTheme.colorScheme.background
-//                    )
-                )
-            }
-        },
-        floatingActionButton = {
-            AddNoteButton(onClick = { navController.navigate(Screen.NoteEdit.route) })
-        },
-        floatingActionButtonPosition = FabPosition.End
-    ) { paddingValues ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
+                .padding(16.dp)
         ) {
-            if (shouldShowSearchBar) {
+            if (shouldShowContent) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Notes",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { viewModel.triggerSync() }) {
+                        Icon(TablerIcons.Refresh, contentDescription = "Sync Notes")
+                    }
+                }
+
                 SearchTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -107,7 +108,7 @@ fun HomeNotesScreen(
 
             if (filteredNotes.isEmpty()) {
                 if (searchQuery.isNotBlank()) {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("No notes found for '$searchQuery'")
                     }
                 } else {
@@ -116,7 +117,7 @@ fun HomeNotesScreen(
             } else {
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(2),
-                    contentPadding = PaddingValues(bottom = 80.dp),
+                    contentPadding = PaddingValues(bottom = 90.dp), // Padding for the bottom nav
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalItemSpacing = 8.dp
                 ) {
@@ -129,10 +130,71 @@ fun HomeNotesScreen(
                 }
             }
         }
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            NavigationBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp),
+                containerColor = MaterialTheme.colorScheme.surface
+            ) {
+                NavigationBarItem(
+                    selected = true,
+                    onClick = { /* Already on Home */ },
+                    icon = {
+                        Icon(
+                            TablerIcons.Home,
+                            "Home",
+                            Modifier.size(32.dp),
+                            MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Home",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    alwaysShowLabel = true,
+                    colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surface)
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { navController.navigate(Screen.Profile.route) },
+                    icon = {
+                        Icon(
+                            TablerIcons.Settings,
+                            "Settings",
+                            Modifier.size(32.dp),
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Settings",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    },
+                    alwaysShowLabel = true,
+                    colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surface)
+                )
+            }
+            Box(
+                modifier = Modifier.offset(y = (-45).dp)
+            ) {
+                AddNoteButton(
+                    onClick = { navController.navigate(Screen.NoteEdit.route) }
+                )
+            }
+        }
     }
 }
 
-// HomeEmptyContent composable remains the same
 @Composable
 fun HomeEmptyContent() {
     Column(
