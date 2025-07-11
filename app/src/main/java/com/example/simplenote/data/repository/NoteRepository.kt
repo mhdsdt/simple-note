@@ -157,7 +157,7 @@ class NoteRepository @Inject constructor(
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
-        val periodicSyncRequest = PeriodicWorkRequestBuilder<SyncWorker>(6, TimeUnit.HOURS)
+        val periodicSyncRequest = PeriodicWorkRequestBuilder<SyncWorker>(10, TimeUnit.SECONDS)
             .setConstraints(constraints)
             .build()
         workManager.enqueueUniquePeriodicWork(

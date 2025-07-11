@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -55,35 +57,50 @@ fun NoteEditScreen(
     val context = LocalContext.current
     val isEditMode = noteId != null
 
-    val noteState by if (isEditMode) {
-        viewModel.getNoteById(noteId!!).collectAsState()
-    } else {
-        remember { mutableStateOf(null) }
-    }
+    // MODIFIED: Observe the new selectedNote StateFlow from the ViewModel
+    val noteState by viewModel.selectedNote.collectAsState()
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    val hasUnsavedChanges = remember(title, description, noteState) {
-        title != (noteState?.title ?: "") || description != (noteState?.description ?: "")
+    // This effect now triggers the data load
+    LaunchedEffect(key1 = noteId) {
+        if (isEditMode) {
+            viewModel.getNoteById(noteId!!)
+        } else {
+            // If creating a new note, ensure the state is clear
+            viewModel.clearSelectedNote()
+        }
     }
 
+    // This effect now populates the local UI state once the data arrives
     LaunchedEffect(noteState) {
         if (noteState != null) {
             title = noteState!!.title
             description = noteState!!.description
+        } else {
+            // If state becomes null (e.g., navigating to create mode), clear fields
+            title = ""
+            description = ""
         }
     }
 
     val saveNoteAndExit = {
-        if (title.isNotBlank()) {
-            if (isEditMode) {
-                if (hasUnsavedChanges) viewModel.updateNote(noteId!!, title, description)
-            } else {
-                viewModel.createNote(title, description)
+        if (title.isNotBlank() || description.isNotBlank()) {
+            val originalTitle = noteState?.title ?: ""
+            val originalDescription = noteState?.description ?: ""
+            val hasChanges = title != originalTitle || description != originalDescription
+
+            if (hasChanges) {
+                if (isEditMode) {
+                    viewModel.updateNote(noteId!!, title, description)
+                } else {
+                    viewModel.createNote(title, description)
+                }
             }
-        } else if (isEditMode && hasUnsavedChanges) {
+        } else if (isEditMode) {
+            // Delete if the note existed before and is now empty
             viewModel.deleteNote(noteId!!)
             Toast.makeText(context, "Note deleted.", Toast.LENGTH_SHORT).show()
         }
@@ -91,6 +108,13 @@ fun NoteEditScreen(
     }
 
     BackHandler { saveNoteAndExit() }
+
+    // Clear the selected note when the screen is left
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearSelectedNote()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -101,12 +125,11 @@ fun NoteEditScreen(
             )
         },
         bottomBar = {
-            if (isEditMode) {
-                val lastEdited = remember(noteState) {
-                    noteState?.updatedAt?.format(
-                        DateTimeFormatter.ofPattern("HH:mm, dd MMM", Locale.getDefault())
-                    ) ?: ""
-                }
+            // Only show bottom bar in edit mode AND when the note data is available
+            if (isEditMode && noteState != null) {
+                val lastEdited = noteState?.updatedAt?.format(
+                    DateTimeFormatter.ofPattern("HH:mm, dd MMM", Locale.getDefault())
+                ) ?: ""
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -144,48 +167,56 @@ fun NoteEditScreen(
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            TextField(
-                value = title,
-                onValueChange = { title = it },
-                placeholder = { Text("Title", style = MaterialTheme.typography.titleLarge) },
-                textStyle = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onBackground),
-                modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-                    unfocusedIndicatorColor = Color.Transparent
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            TextField(
-                value = description,
-                onValueChange = { description = it },
-                placeholder = { Text("Start writing your note here...") },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    lineHeight = 24.sp,
-                    color = MaterialTheme.colorScheme.onBackground
-                ),
+        // Show loading indicator only in edit mode while noteState is null
+        if (isEditMode && noteState == null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            // Show content for new notes immediately, or for edited notes once loaded
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 300.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(MaterialTheme.colorScheme.background)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
+                TextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = { Text("Title", style = MaterialTheme.typography.titleLarge) },
+                    textStyle = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onBackground),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
                 )
-            )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    placeholder = { Text("Start writing your note here...") },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 300.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
+            }
         }
 
         if (showDeleteDialog) {
