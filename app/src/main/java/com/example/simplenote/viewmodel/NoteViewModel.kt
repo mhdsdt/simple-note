@@ -17,15 +17,13 @@ class NoteViewModel @Inject constructor(
     private val noteRepository: NoteRepository
 ) : ViewModel() {
 
-    // This remains the same for the home screen
-    val allNotes: StateFlow<List<NoteResponse>> = noteRepository.getAllNotes()
+    val allNotes: StateFlow<List<NoteResponse>?> = noteRepository.getAllNotes()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
+            initialValue = null
         )
 
-    // NEW: StateFlow to hold the note being edited
     private val _selectedNote = MutableStateFlow<NoteResponse?>(null)
     val selectedNote: StateFlow<NoteResponse?> = _selectedNote
 
@@ -34,7 +32,6 @@ class NoteViewModel @Inject constructor(
         noteRepository.enqueueSync()
     }
 
-    // MODIFIED: This function now populates the _selectedNote StateFlow
     fun getNoteById(id: Int) {
         viewModelScope.launch {
             noteRepository.getNoteById(id).collect { note ->
@@ -43,7 +40,6 @@ class NoteViewModel @Inject constructor(
         }
     }
 
-    // NEW: Function to clear the selected note when leaving the screen
     fun clearSelectedNote() {
         _selectedNote.value = null
     }

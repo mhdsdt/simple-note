@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,180 +62,196 @@ fun HomeNotesScreen(
     viewModel: NoteViewModel
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    // MODIFIED: allNotes is now a nullable list (List<NoteResponse>?)
     val allNotes by viewModel.allNotes.collectAsState()
 
-    // Filter notes based on search query (client-side)
     val filteredNotes = remember(searchQuery, allNotes) {
-        if (searchQuery.isBlank()) {
-            allNotes
+        if (allNotes == null) {
+            emptyList()
+        } else if (searchQuery.isBlank()) {
+            allNotes!!
         } else {
-            allNotes.filter {
+            allNotes!!.filter {
                 it.title.contains(searchQuery, ignoreCase = true) ||
                         it.description.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
-    val shouldShowContent = allNotes.isNotEmpty() || searchQuery.isNotBlank()
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        // MODIFIED: Main content area now handles the loading state
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            if (shouldShowContent) {
-                // 1. Search Bar with external icon (as per the design)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = TablerIcons.Search,
-                        contentDescription = "Search Icon",
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    TextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = {
-                            Text(
-                                "Search...",
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            cursorColor = MaterialTheme.colorScheme.primary,
-                            focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        singleLine = true,
-                    )
-                }
-
+            // Case 1: Show a loading indicator while the initial list is null
+            if (allNotes == null) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Notes",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.align(Alignment.Center),
-                        textAlign = TextAlign.Center
-                    )
-
-                    // This IconButton MUST be inside the Box to use Modifier.align()
-                    IconButton(
-                        onClick = { viewModel.triggerSync() },
-                        modifier = Modifier.align(Alignment.CenterEnd)
-                    ) {
-                        Icon(TablerIcons.Refresh, contentDescription = "Sync Notes")
-                    }
-                }
-            }
-
-            if (filteredNotes.isEmpty()) {
-                if (searchQuery.isNotBlank()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No notes found for '$searchQuery'")
-                    }
-                } else {
-                    HomeEmptyContent()
+                    CircularProgressIndicator()
                 }
             } else {
-                LazyVerticalStaggeredGrid(
-                    columns = StaggeredGridCells.Fixed(2),
-                    contentPadding = PaddingValues(bottom = 90.dp), // Padding for the bottom nav
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalItemSpacing = 8.dp
-                ) {
-                    items(filteredNotes, key = { it.id }) { note ->
-                        NoteItem(
-                            note = note,
-                            onClick = { navController.navigate(Screen.NoteEdit.route + "?noteId=${note.id}") }
+                // Once loaded, show the search bar, title, and content
+                val shouldShowContent = allNotes!!.isNotEmpty() || searchQuery.isNotBlank()
+                if (shouldShowContent) {
+                    // Search Bar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = TablerIcons.Search,
+                            contentDescription = "Search Icon",
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                         )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        TextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = {
+                                Text(
+                                    "Search...",
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                disabledIndicatorColor = Color.Transparent,
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                cursorColor = MaterialTheme.colorScheme.primary,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
+                            singleLine = true,
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    ) {
+                        Text(
+                            text = "Notes",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.align(Alignment.Center),
+                            textAlign = TextAlign.Center
+                        )
+
+                        // This IconButton MUST be inside the Box to use Modifier.align()
+                        IconButton(
+                            onClick = { viewModel.triggerSync() },
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        ) {
+                            Icon(TablerIcons.Refresh, contentDescription = "Sync Notes")
+                        }
+                    }
+                }
+
+                // Case 2: Data is loaded, but the list is empty
+                if (filteredNotes.isEmpty()) {
+                    if (searchQuery.isNotBlank()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No notes found for '$searchQuery'")
+                        }
+                    } else {
+                        HomeEmptyContent()
+                    }
+                } else {
+                    // Case 3: Data is loaded and we have notes to show
+                    LazyVerticalStaggeredGrid(
+                        columns = StaggeredGridCells.Fixed(2),
+                        contentPadding = PaddingValues(bottom = 90.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalItemSpacing = 8.dp
+                    ) {
+                        items(filteredNotes, key = { it.id }) { note ->
+                            NoteItem(
+                                note = note,
+                                onClick = { navController.navigate(Screen.NoteEdit.route + "?noteId=${note.id}") }
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Bottom Navigation from the old UI
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            NavigationBar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(90.dp),
-                containerColor = MaterialTheme.colorScheme.surface
-            ) {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { /* Already on Home */ },
-                    icon = {
-                        Icon(
-                            TablerIcons.Home,
-                            "Home",
-                            Modifier.size(32.dp),
-                            MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    label = {
-                        Text(
-                            "Home",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    alwaysShowLabel = true,
-                    colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surface)
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { navController.navigate(Screen.Profile.route) },
-                    icon = {
-                        Icon(
-                            TablerIcons.Settings,
-                            "Settings",
-                            Modifier.size(32.dp),
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    },
-                    label = {
-                        Text(
-                            "Settings",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    },
-                    alwaysShowLabel = true,
-                    colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surface)
-                )
-            }
-            // FAB from old UI
+        // Bottom Navigation remains the same, but is only visible after loading
+        if (allNotes != null) {
             Box(
-                modifier = Modifier.offset(y = (-45).dp)
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.BottomCenter
             ) {
-                AddNoteButton(
-                    onClick = { navController.navigate(Screen.NoteEdit.route) }
-                )
+                NavigationBar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(90.dp),
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    NavigationBarItem(
+                        selected = true,
+                        onClick = { /* Already on Home */ },
+                        icon = {
+                            Icon(
+                                TablerIcons.Home,
+                                "Home",
+                                Modifier.size(32.dp),
+                                MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Home",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        alwaysShowLabel = true,
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surface)
+                    )
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = { navController.navigate(Screen.Profile.route) },
+                        icon = {
+                            Icon(
+                                TablerIcons.Settings,
+                                "Settings",
+                                Modifier.size(32.dp),
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Settings",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        },
+                        alwaysShowLabel = true,
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surface)
+                    )
+                }
+                Box(
+                    modifier = Modifier.offset(y = (-45).dp)
+                ) {
+                    AddNoteButton(
+                        onClick = { navController.navigate(Screen.NoteEdit.route) }
+                    )
+                }
             }
         }
     }
