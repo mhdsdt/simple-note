@@ -241,7 +241,8 @@ fun ProfileScreen(
                     ) {
                         Text(
                             text = state.message ?: "An error occurred",
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))

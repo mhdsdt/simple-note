@@ -287,7 +287,6 @@ fun HomeEmptyContent(onSyncClick: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(48.dp))
 
-        // NEW: The manual sync button
         IconButton(onClick = onSyncClick) {
             Icon(
                 imageVector = TablerIcons.Refresh,

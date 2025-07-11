@@ -121,8 +121,10 @@ class AuthRepository @Inject constructor(
                     emit(Resource.Error(message = errorMessage))
                 }
             }
+        } catch (e: IOException) {
+            emit(Resource.Error("You appear to be offline.\n Please check your internet connection."))
         } catch (e: Exception) {
-            emit(Resource.Error("An unexpected error occurred: ${e.localizedMessage}"))
+            emit(Resource.Error("Oops! There seems to be an unexpected error..."))
         }
     }
 
