@@ -3,6 +3,8 @@ package com.example.simplenote.ui.note
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,18 +16,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -40,8 +45,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.example.simplenote.ui.components.SimpleTopAppBar
 import com.example.simplenote.viewmodel.NoteViewModel
@@ -221,27 +229,105 @@ fun NoteEditScreen(
             }
         }
 
+        // MODIFIED: Replaced AlertDialog with the new custom dialog
         if (showDeleteDialog) {
-            AlertDialog(
+            DeleteConfirmationDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Note?") },
-                text = { Text("Are you sure you want to permanently delete this note?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showDeleteDialog = false
-                        viewModel.deleteNote(noteId!!)
-                        Toast.makeText(context, "Note Deleted", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
-                    }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
-                    }
+                onConfirm = {
+                    showDeleteDialog = false
+                    viewModel.deleteNote(noteId!!)
+                    Toast.makeText(context, "Note Deleted", Toast.LENGTH_SHORT).show()
+                    navController.popBackStack()
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun DeleteConfirmationDialog(
+    onDismissRequest: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            // Semi-transparent background (scrim)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismissRequest
+                    )
+            )
+
+            // The actual dialog content
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        enabled = false,
+                        onClick = {}), // Prevents clicks from passing through to the scrim
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    // Title and Close Button Row
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                    ) {
+                        Text(
+                            text = "Want to Delete this Note?",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.align(Alignment.CenterStart)
+                        )
+                        IconButton(
+                            onClick = onDismissRequest,
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close"
+                            )
+                        }
+                    }
+
+                    Divider()
+
+                    // Delete Action Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onConfirm)
+                            .padding(vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Icon",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Delete Note",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
         }
     }
 }
