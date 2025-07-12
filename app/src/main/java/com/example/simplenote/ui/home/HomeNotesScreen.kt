@@ -64,6 +64,8 @@ fun HomeNotesScreen(
     var searchQuery by remember { mutableStateOf("") }
     // MODIFIED: allNotes is now a nullable list (List<NoteResponse>?)
     val allNotes by viewModel.allNotes.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
+
 
     val filteredNotes = remember(searchQuery, allNotes) {
         if (allNotes == null) {
@@ -152,12 +154,21 @@ fun HomeNotesScreen(
                             textAlign = TextAlign.Center
                         )
 
-                        // This IconButton MUST be inside the Box to use Modifier.align()
-                        IconButton(
-                            onClick = { viewModel.triggerSync() },
-                            modifier = Modifier.align(Alignment.CenterEnd)
-                        ) {
-                            Icon(TablerIcons.Refresh, contentDescription = "Sync Notes")
+                        if (isSyncing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .align(Alignment.CenterEnd),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            // This IconButton MUST be inside the Box to use Modifier.align()
+                            IconButton(
+                                onClick = { viewModel.triggerSync() },
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            ) {
+                                Icon(TablerIcons.Refresh, contentDescription = "Sync Notes")
+                            }
                         }
                     }
                 }
@@ -169,7 +180,10 @@ fun HomeNotesScreen(
                             Text("No notes found for '$searchQuery'")
                         }
                     } else {
-                        HomeEmptyContent(onSyncClick = { viewModel.triggerSync() })
+                        HomeEmptyContent(
+                            onSyncClick = { viewModel.triggerSync() },
+                            isSyncing = isSyncing
+                        )
                     }
                 } else {
                     // Case 3: Data is loaded and we have notes to show
@@ -258,7 +272,7 @@ fun HomeNotesScreen(
 }
 
 @Composable
-fun HomeEmptyContent(onSyncClick: () -> Unit) {
+fun HomeEmptyContent(onSyncClick: () -> Unit, isSyncing: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -287,13 +301,18 @@ fun HomeEmptyContent(onSyncClick: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(48.dp))
 
-        IconButton(onClick = onSyncClick) {
-            Icon(
-                imageVector = TablerIcons.Refresh,
-                contentDescription = "Sync Notes",
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+        // MODIFIED: Show a loading spinner OR the button based on the isSyncing state.
+        if (isSyncing) {
+            CircularProgressIndicator()
+        } else {
+            IconButton(onClick = onSyncClick) {
+                Icon(
+                    imageVector = TablerIcons.Refresh,
+                    contentDescription = "Sync Notes",
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

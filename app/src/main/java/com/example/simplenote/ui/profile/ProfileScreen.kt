@@ -1,5 +1,6 @@
 package com.example.simplenote.ui.profile
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -55,6 +57,7 @@ import compose.icons.tablericons.Lock
 import compose.icons.tablericons.Logout
 import compose.icons.tablericons.Mail
 import compose.icons.tablericons.Moon
+import compose.icons.tablericons.Trash
 import compose.icons.tablericons.User
 
 @Composable
@@ -64,6 +67,7 @@ fun ProfileScreen(
     isDarkMode: Boolean,
     onThemeChanged: (Boolean) -> Unit
 ) {
+    val context = LocalContext.current
     val userInfoState by viewModel.userInfoState.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
@@ -197,6 +201,24 @@ fun ProfileScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
+                            Row() {
+                                TextLink(
+                                    text = "Clear Cache",
+                                    onClick = {
+                                        viewModel.clearCache()
+                                        Toast.makeText(context, "Cache Cleared", Toast.LENGTH_SHORT)
+                                            .show()
+                                    },
+                                    color = MaterialTheme.colorScheme.error,
+                                    startIcon = {
+                                        Icon(
+                                            imageVector = TablerIcons.Trash,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                )
+                            }
                             // Logout button with red color and icon
                             Row(
                                 modifier = Modifier

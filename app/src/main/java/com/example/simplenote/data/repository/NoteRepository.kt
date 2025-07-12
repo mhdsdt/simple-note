@@ -1,11 +1,13 @@
 package com.example.simplenote.data.repository
 
+import android.net.Uri
 import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.example.simplenote.api.ApiService
 import com.example.simplenote.api.models.NoteRequest
@@ -27,6 +29,18 @@ class NoteRepository @Inject constructor(
     private val noteDao: NoteDao,
     private val workManager: WorkManager
 ) {
+
+    suspend fun clearLocalNotes() {
+        noteDao.clearAll()
+    }
+
+    suspend fun hasUnsyncedChanges(): Boolean {
+        return noteDao.getUnsyncedNotes().isNotEmpty()
+    }
+
+    fun getSyncWorkInfoFlow(id: UUID): Flow<WorkInfo> {
+        return workManager.getWorkInfoByIdFlow(id)
+    }
 
     fun getAllNotes(): Flow<List<NoteResponse>> {
         return noteDao.getAllNotes().map { entities ->
@@ -99,11 +113,10 @@ class NoteRepository @Inject constructor(
                         val response = apiService.createNote(request)
                         if (response.isSuccessful && response.body() != null) {
                             // Replace temporary local note with the one from the server
-                            noteDao.deleteNoteById(note.id)
-                            noteDao.upsertNote(response.body()!!.toNoteEntity(SyncStatus.SYNCED))
+                            val serverNote = response.body()!!.toNoteEntity(SyncStatus.SYNCED)
+                            noteDao.replaceNote(note.id, serverNote)
+
                         } else {
-                            // If the server rejected it, we throw an exception to keep the
-                            // local note in an unsynced state so it can be retried later.
                             throw Exception("Server rejected new note. Code: ${response.code()}")
                         }
                     }
@@ -147,36 +160,64 @@ class NoteRepository @Inject constructor(
 
     suspend fun syncPull() {
         try {
-            val response = apiService.getNotes(pageSize = 1000) // Get all notes
-            if (response.isSuccessful && response.body() != null) {
-                val remoteNotes = response.body()!!.results
-                val remoteNoteEntities = remoteNotes.map { it.toNoteEntity(SyncStatus.SYNCED) }
-                val remoteNoteIds = remoteNotes.map { it.id }.toSet()
+            val allRemoteNotes = mutableListOf<NoteResponse>()
+            var currentPage = 1
 
-                // Get all local notes that are currently marked as SYNCED
-                val localSyncedNotes = noteDao.getLocalSyncedNotes()
+            // Loop to fetch all pages of notes from the server
+            while (true) {
+                val response =
+                    apiService.getNotes(page = currentPage, pageSize = 20) // smaller page size
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    allRemoteNotes.addAll(body.results)
 
-                // Figure out which local notes are no longer on the server
-                val notesToDelete = localSyncedNotes.filter { localNote ->
-                    localNote.id !in remoteNoteIds
+                    // If there's no next page, break the loop
+                    if (body.next == null) {
+                        break
+                    }
+                    // Otherwise, get the next page number from the URL
+                    currentPage = getPageFromUrl(body.next) ?: break
+                } else {
+                    // If any page fetch fails, stop the sync to retry later
+                    throw Exception("Failed to fetch page $currentPage. Code: ${response.code()}")
                 }
-
-                // If there are notes to delete, remove them from the local database
-                if (notesToDelete.isNotEmpty()) {
-                    val idsToDelete = notesToDelete.map { it.id }
-                    noteDao.deleteNotesByIds(idsToDelete)
-                }
-
-                // Finally, update the local database with the fresh list from the server
-                noteDao.upsertAll(remoteNoteEntities)
             }
+
+            val remoteNoteEntities = allRemoteNotes.map { it.toNoteEntity(SyncStatus.SYNCED) }
+            val remoteNoteIds = allRemoteNotes.map { it.id }.toSet()
+
+            // Get all local notes that are currently marked as SYNCED
+            val localSyncedNotes = noteDao.getLocalSyncedNotes()
+
+            // Figure out which local notes are no longer on the server
+            val notesToDelete = localSyncedNotes.filter { localNote ->
+                localNote.id !in remoteNoteIds
+            }
+
+            // If there are notes to delete, remove them from the local database
+            if (notesToDelete.isNotEmpty()) {
+                val idsToDelete = notesToDelete.map { it.id }
+                noteDao.deleteNotesByIds(idsToDelete)
+            }
+
+            // Finally, update the local database with the fresh list from the server
+            noteDao.upsertAll(remoteNoteEntities)
+
         } catch (e: Exception) {
             e.printStackTrace()
             throw e // Re-throw to let WorkManager know the job failed
         }
     }
 
-    fun enqueueSync() {
+    private fun getPageFromUrl(url: String): Int? {
+        return try {
+            Uri.parse(url).getQueryParameter("page")?.toIntOrNull()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun enqueueSync(): UUID {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -184,6 +225,7 @@ class NoteRepository @Inject constructor(
             .setConstraints(constraints)
             .build()
         workManager.enqueue(syncRequest)
+        return syncRequest.id
     }
 
     fun schedulePeriodicSync() {
