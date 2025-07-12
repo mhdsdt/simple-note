@@ -2,6 +2,7 @@ package com.example.simplenote.data.local.db
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -33,4 +34,10 @@ interface NoteDao {
 
     @Query("DELETE FROM notes")
     suspend fun clearAll()
+
+    @Transaction
+    suspend fun replaceNote(noteId: Int, updatedNote: NoteEntity) {
+        deleteNoteById(noteId)
+        upsertNote(updatedNote)
+    }
 }

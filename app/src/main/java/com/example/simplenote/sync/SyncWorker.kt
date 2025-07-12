@@ -1,6 +1,7 @@
 package com.example.simplenote.sync
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -19,11 +20,18 @@ class SyncWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
-            // First, push local changes to the server.
+            // Check if there are local changes BEFORE pushing.
+            val hadUnsyncedChanges = noteRepository.hasUnsyncedChanges()
+            Log.d("SyncWorker", "hasUnsyncedChanges=${hadUnsyncedChanges}")
+
+            // First, push any local changes to the server.
             noteRepository.syncPush()
 
-            // Then, fetch the latest data from the server.
-            noteRepository.syncPull()
+            // Then, only fetch the latest data if this worker was NOT triggered by a local change.
+            // This prevents the race condition where we pull data before our push is reflected.
+            if (!hadUnsyncedChanges) {
+                noteRepository.syncPull()
+            }
 
             Result.success()
         } catch (e: Exception) {

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.simplenote.api.models.UserInfoResponse
 import com.example.simplenote.data.repository.AuthRepository
+import com.example.simplenote.data.repository.NoteRepository
 import com.example.simplenote.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val noteRepository: NoteRepository
 ) : ViewModel() {
 
     private val _registerState = MutableStateFlow<Resource<Boolean>>(Resource.Idle())
@@ -29,6 +31,12 @@ class AuthViewModel @Inject constructor(
 
     private val _changePasswordState = MutableStateFlow<Resource<Boolean>>(Resource.Idle())
     val changePasswordState: StateFlow<Resource<Boolean>> = _changePasswordState
+
+    fun clearCache() {
+        viewModelScope.launch {
+            noteRepository.clearLocalNotes()
+        }
+    }
 
     fun register(
         username: String,
@@ -67,6 +75,7 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             authRepository.logout()
+            noteRepository.clearLocalNotes()
             resetRegisterState()
             resetLoginState()
             resetUserInfoState()
