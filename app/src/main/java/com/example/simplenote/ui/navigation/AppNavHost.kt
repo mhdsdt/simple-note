@@ -1,9 +1,6 @@
 package com.example.simplenote.ui.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -25,22 +22,13 @@ import com.example.simplenote.viewmodel.SessionViewModel
 @Composable
 fun AppNavHost(
     navController: NavHostController,
+    isLoggedIn: Boolean,
+    onboardingCompleted: Boolean,
     isDarkMode: Boolean,
     onThemeChanged: (Boolean) -> Unit
 ) {
-    val sessionViewModel: SessionViewModel = hiltViewModel()
-    val isLoggedIn by sessionViewModel.isLoggedIn.collectAsState()
-    val onboardingCompleted by sessionViewModel.onboardingCompleted.collectAsState()
 
-    LaunchedEffect(isLoggedIn, onboardingCompleted) {
-        if (!isLoggedIn && onboardingCompleted) {
-            navController.navigate(Screen.Login.route) {
-                popUpTo(navController.graph.startDestinationId) { inclusive = true }
-                launchSingleTop = true
-            }
-        }
-    }
-
+    // This logic now works perfectly because the initial states are correct.
     val startDestination = when {
         !onboardingCompleted -> Screen.Onboarding.route
         !isLoggedIn -> Screen.Login.route
@@ -52,7 +40,12 @@ fun AppNavHost(
         startDestination = startDestination
     ) {
         composable(Screen.Onboarding.route) {
-            OnboardingScreen(navController = navController)
+            // Hilt can still provide the ViewModel here for completing the onboarding
+            val sessionViewModel: SessionViewModel = hiltViewModel()
+            OnboardingScreen(
+                navController = navController,
+                sessionViewModel = sessionViewModel
+            )
         }
         composable(Screen.Login.route) {
             LoginScreen(navController = navController)

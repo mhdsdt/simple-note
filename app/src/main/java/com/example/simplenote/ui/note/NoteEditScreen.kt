@@ -3,36 +3,38 @@ package com.example.simplenote.ui.note
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,14 +43,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.example.simplenote.ui.components.SimpleTopAppBar
-import com.example.simplenote.util.Resource
 import com.example.simplenote.viewmodel.NoteViewModel
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -60,136 +63,106 @@ fun NoteEditScreen(
     viewModel: NoteViewModel
 ) {
     val context = LocalContext.current
-    val colors = MaterialTheme.colorScheme
+    val isEditMode = noteId != null
+
+    // MODIFIED: Observe the new selectedNote StateFlow from the ViewModel
+    val noteState by viewModel.selectedNote.collectAsState()
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    var initialTitle by remember { mutableStateOf<String?>(null) }
-    var initialDescription by remember { mutableStateOf<String?>(null) }
-
-    val isEditMode = noteId != null
-
-    val noteState by viewModel.noteState.collectAsState()
-    val createState by viewModel.createNoteState.collectAsState()
-    val updateState by viewModel.updateNoteState.collectAsState()
-    val deleteState by viewModel.deleteNoteState.collectAsState()
-
-    val isLoading = noteState is Resource.Loading ||
-            createState is Resource.Loading ||
-            updateState is Resource.Loading ||
-            deleteState is Resource.Loading
-
-    val saveNote = {
-        val hasChanges = title != initialTitle || description != initialDescription
-        if (hasChanges && title.isNotBlank()) {
-            if (isEditMode) {
-                noteId?.let { viewModel.updateNote(it, title, description) }
-            } else {
-                viewModel.createNote(title, description)
-            }
-        }
-    }
-
-    val handleBackPress = {
-        saveNote()
-        navController.popBackStack()
-    }
-
-    BackHandler { handleBackPress() }
-
-    LaunchedEffect(Unit) {
+    // This effect now triggers the data load
+    LaunchedEffect(key1 = noteId) {
         if (isEditMode) {
-            noteId?.let { viewModel.getNoteById(it) }
+            viewModel.getNoteById(noteId!!)
         } else {
-            initialTitle = ""
-            initialDescription = ""
-            viewModel.resetNoteState()
-            viewModel.resetCreateNoteState()
-            viewModel.resetUpdateNoteState()
-            viewModel.resetDeleteNoteState()
+            // If creating a new note, ensure the state is clear
+            viewModel.clearSelectedNote()
         }
     }
 
+    // This effect now populates the local UI state once the data arrives
     LaunchedEffect(noteState) {
-        if (noteState is Resource.Success) {
-            noteState.data?.let {
-                title = it.title
-                description = it.description
-                initialTitle = it.title
-                initialDescription = it.description
-            }
-        } else if (noteState is Resource.Error) {
-            Toast.makeText(context, noteState.message ?: "Failed to load note", Toast.LENGTH_SHORT)
-                .show()
+        if (noteState != null) {
+            title = noteState!!.title
+            description = noteState!!.description
+        } else {
+            // If state becomes null (e.g., navigating to create mode), clear fields
+            title = ""
+            description = ""
         }
     }
 
-    LaunchedEffect(createState, updateState, deleteState) {
-        val combinedState: Resource<out Any> = when {
-            createState !is Resource.Idle -> createState
-            updateState !is Resource.Idle -> updateState
-            deleteState !is Resource.Idle -> deleteState
-            else -> Resource.Idle()
-        }
+    val saveNoteAndExit = {
+        val originalTitle = noteState?.title ?: ""
+        val originalDescription = noteState?.description ?: ""
+        val hasChanges = title != originalTitle || description != originalDescription
 
-        when (combinedState) {
-            is Resource.Success -> {
-                if (combinedState !is Resource.Success || deleteState is Resource.Success) {
-                    Toast.makeText(context, "Note deleted", Toast.LENGTH_SHORT).show()
-                    navController.popBackStack()
+        if (hasChanges) {
+            if (title.isBlank() || description.isBlank()) {
+                Toast.makeText(context, "Title and description cannot be empty", Toast.LENGTH_SHORT)
+                    .show()
+            } else {
+                if (isEditMode) {
+                    viewModel.updateNote(noteId!!, title, description)
+                } else {
+                    viewModel.createNote(title, description)
                 }
+                navController.popBackStack()
             }
-
-            is Resource.Error -> {
-                Toast.makeText(
-                    context,
-                    combinedState.message ?: "An error occurred",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-
-            else -> {}
+        } else {
+            // Case 2: No changes were made, so just exit silently.
+            navController.popBackStack()
         }
     }
 
-    val lastEdited = remember(noteState) {
-        (noteState as? Resource.Success)?.data?.updatedAt?.format(
-            DateTimeFormatter.ofPattern("HH.mm", Locale.getDefault())
-        ) ?: "..."
+    BackHandler { saveNoteAndExit() }
+
+    // Clear the selected note when the screen is left
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearSelectedNote()
+        }
     }
 
     Scaffold(
-        modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
         topBar = {
             SimpleTopAppBar(
                 navController = navController,
                 title = if (isEditMode) "Edit Note" else "Create Note",
-                onNavigateBack = { handleBackPress() }
+                onNavigateBack = { saveNoteAndExit() }
             )
         },
         bottomBar = {
-            if (isEditMode) {
+            // Only show bottom bar in edit mode AND when the note data is available
+            if (isEditMode && noteState != null) {
+                val lastEdited = noteState?.updatedAt?.format(
+                    DateTimeFormatter.ofPattern("HH:mm, dd MMM", Locale.getDefault())
+                ) ?: ""
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
-                        .background(colors.surface)
+                        .background(MaterialTheme.colorScheme.surface)
                         .padding(start = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "Last edited on $lastEdited",
-                        fontSize = 12.sp,
-                        color = colors.onSurfaceVariant
-                    )
+                    if (lastEdited.isNotEmpty()) {
+                        Text(
+                            text = "Edited: $lastEdited",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                     Box(
                         modifier = Modifier
                             .size(48.dp)
-                            .clip(RoundedCornerShape(0.dp))
-                            .background(colors.primary)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
                     ) {
                         IconButton(onClick = { showDeleteDialog = true }) {
                             Icon(
@@ -204,27 +177,31 @@ fun NoteEditScreen(
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(colors.background)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            if (isLoading && noteState is Resource.Loading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-            } else {
+        // Show loading indicator only in edit mode while noteState is null
+        if (isEditMode && noteState == null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            // Show content for new notes immediately, or for edited notes once loaded
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(MaterialTheme.colorScheme.background)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
                 TextField(
                     value = title,
                     onValueChange = { title = it },
                     placeholder = { Text("Title", style = MaterialTheme.typography.titleLarge) },
-                    textStyle = MaterialTheme.typography.titleLarge.copy(color = colors.onBackground),
+                    textStyle = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onBackground),
                     modifier = Modifier.fillMaxWidth(),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = colors.surfaceVariant,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant,
                         unfocusedIndicatorColor = Color.Transparent
                     )
                 )
@@ -237,7 +214,7 @@ fun NoteEditScreen(
                     placeholder = { Text("Start writing your note here...") },
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         lineHeight = 24.sp,
-                        color = colors.onBackground
+                        color = MaterialTheme.colorScheme.onBackground
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -252,25 +229,105 @@ fun NoteEditScreen(
             }
         }
 
+        // MODIFIED: Replaced AlertDialog with the new custom dialog
         if (showDeleteDialog) {
-            AlertDialog(
+            DeleteConfirmationDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Note?") },
-                text = { Text("Are you sure you want to permanently delete this note?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showDeleteDialog = false
-                        noteId?.let { viewModel.deleteNote(it) }
-                    }) {
-                        Text("Delete", color = colors.error)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
-                    }
+                onConfirm = {
+                    showDeleteDialog = false
+                    viewModel.deleteNote(noteId!!)
+                    Toast.makeText(context, "Note Deleted", Toast.LENGTH_SHORT).show()
+                    navController.popBackStack()
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun DeleteConfirmationDialog(
+    onDismissRequest: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            // Semi-transparent background (scrim)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismissRequest
+                    )
+            )
+
+            // The actual dialog content
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        enabled = false,
+                        onClick = {}), // Prevents clicks from passing through to the scrim
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    // Title and Close Button Row
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                    ) {
+                        Text(
+                            text = "Want to Delete this Note?",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.align(Alignment.CenterStart)
+                        )
+                        IconButton(
+                            onClick = onDismissRequest,
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close"
+                            )
+                        }
+                    }
+
+                    Divider()
+
+                    // Delete Action Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onConfirm)
+                            .padding(vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Icon",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Delete Note",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
         }
     }
 }
